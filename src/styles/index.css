@@ -1,0 +1,106 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tokens semánticos. Los valores viven en variables CSS para poder cambiar de tema
+   sin recompilar. Todos los pares de texto cumplen contraste WCAG AA (>= 4.5:1)
+   y los bordes de controles >= 3:1 (verificado con un script de contraste). */
+:root {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef1f7;
+  --border: #dde2ee;
+  --border-strong: #8892ab;
+  --fg: #0e1630;
+  --muted: #55607a;
+  --primary: #12296b;
+  --primary-fg: #ffffff;
+  --primary-soft: #e6ecfa;
+  --primary-soft-fg: #12296b;
+  --success: #166534;
+  --success-soft: #e3f4e8;
+  --warning: #8a3b0c;
+  --warning-soft: #fdf0dc;
+  --danger: #b42318;
+  --danger-soft: #fde8e6;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0a0f1f;
+  --surface: #111833;
+  --surface-2: #19224a;
+  --border: #26325e;
+  --border-strong: #5a6a9a;
+  --fg: #e9edf8;
+  --muted: #a0abc8;
+  --primary: #8fb0ff;
+  --primary-fg: #0a1230;
+  --primary-soft: #1b2a5e;
+  --primary-soft-fg: #a9c2ff;
+  --success: #7ee2a0;
+  --success-soft: #10301f;
+  --warning: #f6c27a;
+  --warning-soft: #35230c;
+  --danger: #ff9d94;
+  --danger-soft: #3a1511;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  --font-display: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Noto Serif', serif;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-fg: var(--primary-soft-fg);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgb(14 22 48 / 0.04), 0 4px 16px rgb(14 22 48 / 0.04);
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* Respeta la preferencia del sistema de reducir el movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "secretaria-estaca",
+  "compatibility_date": "2026-10-01",
+  // Fase 1: solo archivos estáticos. No hay código de servidor (Worker) todavía;
+  // se añadirá "main" en la Fase 4 junto con D1 y la autenticación.
+  "assets": {
+    "directory": "./dist",
+    // La app es de una sola página: cualquier ruta devuelve index.html.
+    "not_found_handling": "single-page-application",
+  },
+  "observability": { "enabled": false },
+}
