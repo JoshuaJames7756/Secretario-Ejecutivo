@@ -237,6 +237,20 @@ export default function ReunionDetallePage() {
         </Card>
 
         <Card>
+          <CardTitle>Informe</CardTitle>
+          <p className="mb-3 text-sm text-muted">
+            Prepara un resumen para compartir. Eliges qué incluir; lo privado queda fuera por
+            defecto.
+          </p>
+          <Link
+            to={`/reuniones/${meeting.id}/informe`}
+            className={cn(buttonVariants({ variant: 'outline' }))}
+          >
+            Preparar informe
+          </Link>
+        </Card>
+
+        <Card>
           <CardTitle>Estado y eliminación</CardTitle>
           <div className="flex flex-wrap items-center gap-2">
             {STATUS_ACTIONS.filter(

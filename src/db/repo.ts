@@ -291,6 +291,27 @@ export async function restoreEntity<K extends EntityName>(
 }
 
 /**
+ * Elimina de forma definitiva UN registro que ya está en la papelera. Es una acción expresa de la
+ * persona. Nunca se aplica a un registro activo.
+ */
+export async function purgeEntity<K extends EntityName>(name: K, id: Id): Promise<void> {
+  const deviceId = await guard(() => getDeviceId());
+  await guard(() =>
+    db.transaction('rw', db.table(name), db.changeLog, db.syncOps, db.versions, async () => {
+      const current = await table(name).get(id);
+      if (!current) throw new RecordNotFoundError(name, id);
+      if (isActive(current)) {
+        throw new Error('Solo se puede eliminar definitivamente algo que está en la papelera.');
+      }
+      await table(name).delete(id);
+      // Eliminar definitivamente también borra sus versiones anteriores.
+      await db.versions.where('[entity+entityId]').equals([name, id]).delete();
+      await track(name, id, 'purge', current.rev, Date.now(), deviceId);
+    }),
+  );
+}
+
+/**
  * Elimina de forma definitiva lo que lleva más de 30 días en la papelera.
  * Es una acción explícita: no se ejecuta sola en cada arranque.
  */
@@ -299,12 +320,13 @@ export async function purgeExpired(now = Date.now()): Promise<number> {
   let purged = 0;
   for (const name of ENTITY_NAMES) {
     await guard(() =>
-      db.transaction('rw', db.table(name), db.changeLog, db.syncOps, async () => {
+      db.transaction('rw', db.table(name), db.changeLog, db.syncOps, db.versions, async () => {
         const expired = await table(name)
           .filter((e) => e.deletedAt !== undefined && now - e.deletedAt >= TRASH_RETENTION_MS)
           .toArray();
         for (const entity of expired) {
           await table(name).delete(entity.id);
+          await db.versions.where('[entity+entityId]').equals([name, entity.id]).delete();
           await track(name, entity.id, 'purge', entity.rev, now, deviceId);
           purged += 1;
         }
@@ -325,6 +347,7 @@ export function runInTransaction<T>(fn: () => Promise<T>): Promise<T> {
     db.changeLog,
     db.syncOps,
     db.settings,
+    db.versions,
   ];
   return guard(() => db.transaction('rw', tables, fn));
 }

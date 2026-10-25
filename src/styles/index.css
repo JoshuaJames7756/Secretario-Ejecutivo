@@ -104,3 +104,21 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Impresión: solo se imprime el informe (también sirve para "Guardar como PDF"). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #informe-imprimible,
+  #informe-imprimible * {
+    visibility: visible;
+  }
+  #informe-imprimible {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    color: #000;
+    background: #fff;
+  }
+}

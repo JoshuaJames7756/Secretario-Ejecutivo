@@ -46,6 +46,7 @@ function GeneralNote({ meetingId }: { meetingId: string }) {
         label="Nota general de la reunión"
         initial={note?.content ?? ''}
         onSave={(value) => saveGeneralNote(meetingId, value)}
+        versionsFor={{ entity: 'records', entityId: noteId }}
         placeholder="Observaciones generales que no pertenecen a un punto en particular"
       />
       <label className="flex items-center gap-2 text-sm">
@@ -252,6 +253,7 @@ export default function ModoReunionPage() {
                   label="Notas de este punto"
                   initial={current.notes ?? ''}
                   onSave={(value) => saveAgendaItemNotes(current.id, value)}
+                  versionsFor={{ entity: 'agendaItems', entityId: current.id }}
                 />
               </div>
             </Card>

@@ -121,6 +121,20 @@ dos citas a la vez con el mismo líder (se comprueba dentro de la misma transacc
 cita). Salir de la disponibilidad configurada avisa y solo se permite con confirmación expresa.
 El mensaje de WhatsApp es un borrador editable que se copia; la aplicación no envía nada.
 
+## Fase 5 local: recuperación, búsqueda e informes
+
+- **Papelera** (`/papelera`): 30 días para recuperar; eliminar definitivamente es expreso y borra
+  también las versiones de esa nota.
+- **Historial y búsqueda**: sin distinguir tildes ni mayúsculas, con filtro por tipo y fechas.
+- **Informes**: por reunión; eliges secciones y puntos; lo privado queda fuera por defecto; copiar
+  (WhatsApp o texto) o imprimir/guardar como PDF desde el navegador.
+- **Versiones de notas** (esquema local v2): texto anterior cada 5 minutos como máximo, y siempre
+  que se borra buena parte de la nota; últimas 20 por nota. Solo local: no entran en el respaldo
+  cifrado ni en la futura sincronización.
+- **Fase 4 (cuenta y sincronización) pospuesta**: Workers Free da 10 ms de CPU por solicitud y el
+  hash de contraseñas puede superarlo. Hay que probarlo con un despliegue real antes de decidir
+  entre Passkeys, contraseña o plan de pago.
+
 ## Límites conocidos
 
 - Sin pruebas en navegador real (Playwright) ni revisión visual en Android todavía; las pruebas

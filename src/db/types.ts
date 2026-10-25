@@ -190,6 +190,15 @@ export interface Attachment extends BaseEntity {
 
 /* ---------- Infraestructura (no son entidades de negocio) ---------- */
 
+/** Versión anterior del texto de una nota. Solo local: no se sincroniza ni entra en el respaldo. */
+export interface NoteVersion {
+  id: Id;
+  entity: 'agendaItems' | 'records';
+  entityId: Id;
+  content: string;
+  at: number;
+}
+
 export type ChangeOp = 'create' | 'update' | 'delete' | 'restore' | 'purge';
 
 /** Historial de cambios. Guarda qué cambió y cuándo, nunca el contenido. */

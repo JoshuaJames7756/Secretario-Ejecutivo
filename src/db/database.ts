@@ -10,6 +10,7 @@ import type {
   MeetingOccurrence,
   MeetingRecord,
   MeetingTemplate,
+  NoteVersion,
   Organization,
   Setting,
   SyncOperation,
@@ -38,6 +39,7 @@ export class AppDatabase extends Dexie {
   changeLog!: EntityTable<ChangeLogEntry, 'id'>;
   syncOps!: EntityTable<SyncOperation, 'id'>;
   settings!: EntityTable<Setting, 'key'>;
+  versions!: EntityTable<NoteVersion, 'id'>;
 
   constructor(name: string = DB_NAME) {
     super(name);
@@ -57,6 +59,11 @@ export class AppDatabase extends Dexie {
       changeLog: 'id, entity, entityId, at',
       syncOps: 'id, status, createdAt, [entity+entityId]',
       settings: 'key',
+    });
+
+    // v2: versiones anteriores de las notas. Solo se añade una tabla; no se toca ningún dato.
+    this.version(2).stores({
+      versions: 'id, [entity+entityId], at',
     });
   }
 }

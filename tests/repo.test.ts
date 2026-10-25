@@ -31,8 +31,8 @@ beforeEach(async () => {
 });
 
 describe('esquema local', () => {
-  it('declara la versión 1 con las 13 tablas esperadas', () => {
-    expect(db.verno).toBe(1);
+  it('declara la versión 2 con las 14 tablas esperadas', () => {
+    expect(db.verno).toBe(2);
     expect(db.tables.map((t) => t.name).sort()).toEqual(
       [
         'agendaItems',
@@ -48,6 +48,7 @@ describe('esquema local', () => {
         'settings',
         'syncOps',
         'templates',
+        'versions',
       ].sort(),
     );
   });

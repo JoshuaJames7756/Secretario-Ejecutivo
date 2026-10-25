@@ -245,7 +245,7 @@ export async function restoreBackup(text: string, password: string): Promise<Bac
 
   await db.transaction(
     'rw',
-    [...names.map((n) => db.table(n)), db.changeLog, db.syncOps],
+    [...names.map((n) => db.table(n)), db.changeLog, db.syncOps, db.versions],
     async () => {
       for (const name of names) {
         await db.table(name).clear();
@@ -254,6 +254,7 @@ export async function restoreBackup(text: string, password: string): Promise<Bac
       // El historial de cambios y la cola de sincronización pertenecen a los datos anteriores.
       await db.changeLog.clear();
       await db.syncOps.clear();
+      await db.versions.clear();
     },
   );
 

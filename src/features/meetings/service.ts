@@ -17,6 +17,7 @@ import type {
   MeetingStatus,
   RecordType,
 } from '@/db/types';
+import { captureVersion } from '@/features/versions/service';
 import { createFollowUp, ValidationError } from '@/features/followups/service';
 
 export { ValidationError };
@@ -198,7 +199,12 @@ export async function removeAgendaItem(id: Id): Promise<void> {
 }
 
 export function saveAgendaItemNotes(id: Id, notes: string): Promise<AgendaItem> {
-  return updateEntity('agendaItems', id, { notes });
+  return runInTransaction(async () => {
+    const current = await db.agendaItems.get(id);
+    if (!current || !isActive(current)) throw new RecordNotFoundError('agendaItems', id);
+    await captureVersion('agendaItems', id, current.notes ?? '', notes);
+    return updateEntity('agendaItems', id, { notes });
+  });
 }
 
 /* ---------- Registros de la reunión ---------- */
@@ -214,7 +220,10 @@ export async function saveGeneralNote(meetingId: Id, content: string): Promise<M
   const id = `${GENERAL_NOTE_ID_PREFIX}${meetingId}`;
   return runInTransaction(async () => {
     const existing = await db.records.get(id);
-    if (existing && isActive(existing)) return updateEntity('records', id, { content });
+    if (existing && isActive(existing)) {
+      await captureVersion('records', id, existing.content, content);
+      return updateEntity('records', id, { content });
+    }
     return createEntity('records', { id, meetingId, type: 'nota', content, isPrivate: false });
   });
 }
