@@ -13,6 +13,7 @@ import { db } from '@/db/database';
 import { softDeleteEntity } from '@/db/repo';
 import type { MeetingOccurrence, MeetingStatus } from '@/db/types';
 import { AgendaEditor } from '@/features/meetings/components/agenda-editor';
+import { SuggestionsCard } from '@/features/meetings/components/suggestions-card';
 import { RecordList } from '@/features/meetings/components/record-list';
 import {
   MEETING_STATUS_LABEL,
@@ -227,6 +228,8 @@ export default function ReunionDetallePage() {
           <CardTitle>Agenda</CardTitle>
           <AgendaEditor meetingId={meeting.id} editable={editable} />
         </Card>
+
+        {editable && <SuggestionsCard meetingId={meeting.id} />}
 
         <Card>
           <CardTitle>Decisiones, asignaciones y notas</CardTitle>

@@ -60,6 +60,8 @@ export interface MeetingOccurrence extends BaseEntity {
   status: MeetingStatus;
   seriesId?: Id;
   summary?: string;
+  /** Seguimientos que la persona descartó como sugerencia de agenda para esta reunión. */
+  dismissedSuggestionIds?: Id[];
 }
 
 export interface AgendaItem extends BaseEntity {
@@ -69,6 +71,8 @@ export interface AgendaItem extends BaseEntity {
   order: number;
   notes?: string;
   prep: 'pendiente' | 'lista';
+  /** Seguimiento del que se tomó este punto (si se agregó desde las sugerencias). */
+  followUpId?: Id;
 }
 
 export type RecordType =

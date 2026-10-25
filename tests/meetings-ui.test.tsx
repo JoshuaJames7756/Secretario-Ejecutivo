@@ -127,4 +127,30 @@ describe('flujo de reunión en pantalla', () => {
     // Ya no está entre los abiertos.
     await waitFor(() => expect(screen.queryByText('Entregar informe')).toBeNull());
   });
+
+  it('el calendario muestra la reunión de un día y programa desde ese día', async () => {
+    const startsAt = new Date(2026, 9, 24, 19, 0).getTime();
+    await createEntity('meetings', {
+      title: 'Consejo de estaca',
+      startsAt,
+      durationMin: 60,
+      participants: [],
+      status: 'programada',
+    });
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 9, 20, 10, 0) });
+    window.history.pushState({}, '', '/calendario');
+    const user = userEvent.setup();
+    try {
+      render(<App />);
+      const day = await screen.findByRole('gridcell', { name: /sábado, 24 de octubre, 1 reunión/ });
+      await user.click(day);
+      expect(await screen.findByText('Consejo de estaca')).toBeTruthy();
+
+      await user.click(screen.getByRole('link', { name: /Nueva reunión/ }));
+      const when = (await screen.findByLabelText('Fecha y hora')) as HTMLInputElement;
+      expect(when.value).toBe('2026-10-24T19:00');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

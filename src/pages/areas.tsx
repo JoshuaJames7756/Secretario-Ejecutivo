@@ -1,4 +1,4 @@
-import { CalendarDays, ClipboardList, Search, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Search, type LucideIcon } from 'lucide-react';
 import { EmptyState, PageHeader } from '@/components/shared/page';
 
 interface AreaConfig {
@@ -26,15 +26,6 @@ function createAreaPage(config: AreaConfig) {
     );
   };
 }
-
-export const CalendarioPage = createAreaPage({
-  title: 'Calendario',
-  description: 'Vistas anual, mensual, semanal y diaria, con reuniones únicas y recurrentes.',
-  icon: CalendarDays,
-  emptyTitle: 'Tu calendario aparecerá aquí',
-  emptyText: 'Podrás programar reuniones, repetirlas y reprogramarlas conservando el historial.',
-  phase: 2,
-});
 
 export const EntrevistasPage = createAreaPage({
   title: 'Entrevistas',

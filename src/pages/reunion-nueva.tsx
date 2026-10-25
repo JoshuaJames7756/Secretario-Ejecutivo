@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useForm, useWatch } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router';
+import { dayToDateTimeLocal } from '@/features/calendar/model';
 import { PageHeader } from '@/components/shared/page';
 import { Button } from '@/components/ui/button';
 import { Field, describedBy, inputClass, textareaClass } from '@/components/ui/field';
@@ -20,9 +21,11 @@ import { attempt } from '@/lib/actions';
 function NewMeetingForm({
   templates,
   initialTemplate,
+  initialDate,
 }: {
   templates: MeetingTemplate[];
   initialTemplate?: MeetingTemplate;
+  initialDate?: string;
 }) {
   const navigate = useNavigate();
   const {
@@ -37,7 +40,7 @@ function NewMeetingForm({
     defaultValues: {
       templateId: initialTemplate?.id ?? '',
       title: initialTemplate?.name ?? '',
-      startsAt: toDateTimeLocal(nextFullHour()),
+      startsAt: initialDate ? dayToDateTimeLocal(initialDate) : toDateTimeLocal(nextFullHour()),
       durationMin: String(initialTemplate?.durationMin ?? 60),
       place: '',
       participants: initialTemplate?.suggestedParticipants.join('\n') ?? '',
@@ -158,6 +161,8 @@ function NewMeetingForm({
 export default function ReunionNuevaPage() {
   const [params] = useSearchParams();
   const prefill = params.get('plantilla') ?? '';
+  const rawDate = params.get('fecha') ?? '';
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : undefined;
   const templates = useLiveQuery(async () => {
     const rows = await db.templates.filter((t) => t.deletedAt === undefined).toArray();
     return rows
@@ -176,6 +181,7 @@ export default function ReunionNuevaPage() {
         <NewMeetingForm
           templates={templates}
           initialTemplate={templates.find((t) => t.id === prefill)}
+          initialDate={date}
         />
       )}
     </>

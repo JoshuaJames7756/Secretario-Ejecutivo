@@ -97,7 +97,7 @@ tests/         Vitest + Testing Library + fake-indexeddb
   propone npm (`--force`) instalaría un Wrangler más antiguo, así que no se aplica. Se resolverá al
   actualizar Wrangler cuando publique una versión con `undici` corregido.
 
-## Estado de la Fase 2 (en curso)
+## Estado de la Fase 2 (funcionalidad completa)
 
 Hecho: catálogo de plantillas (datos del Manual marcados "por verificar"), reuniones con agenda
 propia copiada de la plantilla, modo reunión con notas autoguardadas, registros (propuesta,
@@ -108,13 +108,17 @@ encabezado va autenticado, se verifica al crear (se vuelve a abrir y se compara)
 es transaccional con comprobación posterior. Si se pierde la contraseña no hay recuperación.
 Los adjuntos (Fase 5) aún no llevan archivos, solo sus metadatos.
 
-Falta de la Fase 2: sugerencias de agenda desde seguimientos abiertos y vistas de calendario.
+Calendario mensual (semana desde el lunes) con las reuniones de cada día y creación de reunión
+con la fecha elegida. Sugerencias de agenda: los seguimientos abiertos se ofrecen en la ficha de
+la reunión; agregar o "ahora no", nunca automático.
+
+Falta para cerrar la Fase 2: pruebas en navegador real (Playwright) y revisión visual en Android.
 
 ## Límites conocidos
 
 - Sin pruebas en navegador real (Playwright) ni revisión visual en Android todavía; las pruebas
   actuales usan jsdom.
-- Calendario, Entrevistas e Historial muestran su propósito y la fase en que llegan; no simulan datos.
+- Entrevistas e Historial muestran su propósito y la fase en que llegan; no simulan datos.
 - Los datos del Manual General del catálogo deben ser verificados por una persona antes de confiar en ellos.
 - Eliminar una reunión no elimina sus seguimientos (se gestionan por separado).
 - Almacenamiento persistente: Chrome decide si lo concede. La pantalla de Configuración muestra el estado real.
@@ -122,7 +126,7 @@ Falta de la Fase 2: sugerencias de agenda desde seguimientos abiertos y vistas d
 ## Fases
 
 1. Base del proyecto (hecha).
-2. Ciclo central local (en curso, ver arriba).
+2. Ciclo central local (funcional, falta verificación en navegador real).
 3. Entrevistas y disponibilidad.
 4. Autenticación y sincronización (Workers, Hono, D1, Drizzle, Better Auth).
 5. Adjuntos, papelera visible, versiones e informes.
