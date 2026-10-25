@@ -1,4 +1,4 @@
-import type { Table } from 'dexie';
+import Dexie, { type Table } from 'dexie';
 import { db } from './database';
 import { getDeviceId, newId } from './settings';
 import type {
@@ -15,6 +15,7 @@ import type {
   MeetingRecord,
   MeetingTemplate,
   Organization,
+  SyncOperation,
 } from './types';
 
 /** Tablas de negocio: todas llevan `rev`, borrado lógico, historial y cola de sincronización. */
@@ -84,13 +85,6 @@ export class RecoveryWindowExpiredError extends Error {
   }
 }
 
-const DOMAIN_ERRORS = [
-  RecordNotFoundError,
-  RevisionConflictError,
-  RecoveryWindowExpiredError,
-  LocalSaveError,
-];
-
 function describeStorageError(error: unknown): string {
   const name = error instanceof Error ? error.name : '';
   if (name === 'QuotaExceededError') {
@@ -102,11 +96,34 @@ function describeStorageError(error: unknown): string {
   return 'No se pudo guardar en este dispositivo. Tu cambio no se registró.';
 }
 
+const STORAGE_ERROR_NAMES = new Set([
+  'QuotaExceededError',
+  'InvalidStateError',
+  'DatabaseClosedError',
+  'AbortError',
+  'TransactionInactiveError',
+  'UnknownError',
+  'VersionError',
+  'OpenFailedError',
+  'SchemaError',
+]);
+
+/** Fallo del almacenamiento del navegador (espacio, base cerrada, transacción abortada...). */
+function isStorageError(error: unknown): boolean {
+  if (error instanceof Dexie.DexieError) return true;
+  return error instanceof Error && STORAGE_ERROR_NAMES.has(error.name);
+}
+
+/**
+ * Convierte SOLO los fallos de almacenamiento en un mensaje comprensible. Los errores de la
+ * aplicación (validaciones, transiciones inválidas, conflictos...) pasan sin cambios: decirle a
+ * alguien "no se pudo guardar en este dispositivo" cuando solo olvidó un campo sería falso.
+ */
 async function guard<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (error) {
-    if (DOMAIN_ERRORS.some((E) => error instanceof E)) throw error;
+    if (error instanceof LocalSaveError || !isStorageError(error)) throw error;
     throw new LocalSaveError(describeStorageError(error), { cause: error });
   }
 }
@@ -131,6 +148,23 @@ async function track(
 ): Promise<void> {
   await db.changeLog.add({ id: newId(), entity, entityId, op, rev, at });
   if (op === 'purge') return; // La purga es mantenimiento local, no se sincroniza.
+
+  // Con guardado automático un mismo registro puede cambiar decenas de veces antes de
+  // sincronizar. Si la última operación de ese registro sigue pendiente y es un "upsert",
+  // basta con avanzar su revisión: al enviarla se lee la versión actual. No se fusiona nunca
+  // con una operación ya enviada ni a través de un borrado o restauración (el orden importa).
+  if (op === 'create' || op === 'update') {
+    const ops = await db.syncOps.where('[entity+entityId]').equals([entity, entityId]).toArray();
+    const latest = ops.reduce<SyncOperation | undefined>(
+      (best, o) => (!best || o.rev > best.rev ? o : best),
+      undefined,
+    );
+    if (latest && latest.op === 'upsert' && latest.status === 'pendiente') {
+      await db.syncOps.update(latest.id, { rev });
+      return;
+    }
+  }
+
   await db.syncOps.add({
     id: newId(),
     entity,
@@ -163,7 +197,7 @@ export async function createEntity<K extends EntityName>(
   name: K,
   data: NewEntity<TableEntities[K]>,
 ): Promise<TableEntities[K]> {
-  const deviceId = await getDeviceId();
+  const deviceId = await guard(() => getDeviceId());
   return guard(() =>
     db.transaction('rw', db.table(name), db.changeLog, db.syncOps, async () => {
       const t = table(name);
@@ -196,7 +230,7 @@ export async function updateEntity<K extends EntityName>(
   patch: Patch<TableEntities[K]>,
   options: { expectedRev?: number } = {},
 ): Promise<TableEntities[K]> {
-  const deviceId = await getDeviceId();
+  const deviceId = await guard(() => getDeviceId());
   return guard(() =>
     db.transaction('rw', db.table(name), db.changeLog, db.syncOps, async () => {
       const t = table(name);
@@ -219,7 +253,7 @@ export async function softDeleteEntity<K extends EntityName>(
   name: K,
   id: Id,
 ): Promise<TableEntities[K]> {
-  const deviceId = await getDeviceId();
+  const deviceId = await guard(() => getDeviceId());
   return guard(() =>
     db.transaction('rw', db.table(name), db.changeLog, db.syncOps, async () => {
       const t = table(name);
@@ -239,7 +273,7 @@ export async function restoreEntity<K extends EntityName>(
   id: Id,
   now = Date.now(),
 ): Promise<TableEntities[K]> {
-  const deviceId = await getDeviceId();
+  const deviceId = await guard(() => getDeviceId());
   return guard(() =>
     db.transaction('rw', db.table(name), db.changeLog, db.syncOps, async () => {
       const t = table(name);
@@ -261,7 +295,7 @@ export async function restoreEntity<K extends EntityName>(
  * Es una acción explícita: no se ejecuta sola en cada arranque.
  */
 export async function purgeExpired(now = Date.now()): Promise<number> {
-  const deviceId = await getDeviceId();
+  const deviceId = await guard(() => getDeviceId());
   let purged = 0;
   for (const name of ENTITY_NAMES) {
     await guard(() =>
@@ -278,4 +312,19 @@ export async function purgeExpired(now = Date.now()): Promise<number> {
     );
   }
   return purged;
+}
+
+/**
+ * Ejecuta varias escrituras como una sola unidad: o se guardan todas o ninguna.
+ * Úsalo cuando una acción de la persona crea o cambia varios registros a la vez
+ * (por ejemplo, una reunión y los puntos de su agenda).
+ */
+export function runInTransaction<T>(fn: () => Promise<T>): Promise<T> {
+  const tables = [
+    ...ENTITY_NAMES.map((name) => db.table(name)),
+    db.changeLog,
+    db.syncOps,
+    db.settings,
+  ];
+  return guard(() => db.transaction('rw', tables, fn));
 }

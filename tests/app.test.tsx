@@ -49,12 +49,17 @@ describe('aplicación', () => {
     expect(screen.getAllByText('Guardado en este dispositivo').length).toBeGreaterThan(0);
   });
 
-  it('las acciones que aún no existen aparecen deshabilitadas y con su fase', async () => {
+  it('las acciones de la Fase 2 son enlaces y las que aún no existen están deshabilitadas', async () => {
     render(<App />);
-    const prepare = await screen.findByRole('button', { name: /Preparar agenda/ });
-    expect((prepare as HTMLButtonElement).disabled).toBe(true);
-    expect(within(prepare).getByText('Fase 2')).toBeTruthy();
-    // La que sí funciona es un enlace real.
+    const prepare = await screen.findByRole('link', { name: /Preparar agenda/ });
+    expect(prepare.getAttribute('href')).toBe('/reuniones/nueva');
+    // Registrar nota solo existe durante una reunión en curso.
+    const note = screen.getByRole('button', { name: /Registrar nota/ });
+    expect((note as HTMLButtonElement).disabled).toBe(true);
+    // Las de fases posteriores siguen deshabilitadas y dicen su fase.
+    const interview = screen.getByRole('button', { name: /Programar entrevista/ });
+    expect((interview as HTMLButtonElement).disabled).toBe(true);
+    expect(within(interview).getByText('Fase 3')).toBeTruthy();
     expect(screen.getByRole('link', { name: /Abrir el calendario/ }).getAttribute('href')).toBe(
       '/calendario',
     );

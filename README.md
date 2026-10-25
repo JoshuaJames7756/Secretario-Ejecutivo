@@ -97,17 +97,28 @@ tests/         Vitest + Testing Library + fake-indexeddb
   propone npm (`--force`) instalaría un Wrangler más antiguo, así que no se aplica. Se resolverá al
   actualizar Wrangler cuando publique una versión con `undici` corregido.
 
-## Límites conocidos de la Fase 1
+## Estado de la Fase 2 (en curso)
 
-- Sin pruebas en navegador real (Playwright) todavía; las pruebas actuales usan jsdom.
-- Las áreas Calendario, Reuniones, Entrevistas, Seguimientos, Plantillas e Historial muestran su
-  propósito y la fase en que llegan; no simulan datos.
+Hecho: catálogo de plantillas (datos del Manual marcados "por verificar"), reuniones con agenda
+propia copiada de la plantilla, modo reunión con notas autoguardadas, registros (propuesta,
+decisión, asignación, asunto pendiente, nota informativa), Seguimientos e Inicio conectado.
+
+Falta de la Fase 2: sugerencias de agenda desde seguimientos abiertos, vistas de calendario,
+respaldo cifrado exportable con restauración verificada.
+
+## Límites conocidos
+
+- Sin pruebas en navegador real (Playwright) ni revisión visual en Android todavía; las pruebas
+  actuales usan jsdom.
+- Calendario, Entrevistas e Historial muestran su propósito y la fase en que llegan; no simulan datos.
+- Los datos del Manual General del catálogo deben ser verificados por una persona antes de confiar en ellos.
+- Eliminar una reunión no elimina sus seguimientos (se gestionan por separado).
 - Almacenamiento persistente: Chrome decide si lo concede. La pantalla de Configuración muestra el estado real.
 
 ## Fases
 
-1. Base del proyecto (esta).
-2. Ciclo central local: plantillas, reuniones, agenda, modo reunión, seguimiento y respaldo cifrado exportable.
+1. Base del proyecto (hecha).
+2. Ciclo central local (en curso, ver arriba).
 3. Entrevistas y disponibilidad.
 4. Autenticación y sincronización (Workers, Hono, D1, Drizzle, Better Auth).
 5. Adjuntos, papelera visible, versiones e informes.

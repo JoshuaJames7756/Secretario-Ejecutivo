@@ -1,12 +1,4 @@
-import {
-  BookOpen,
-  CalendarDays,
-  ClipboardList,
-  ListChecks,
-  Search,
-  Users,
-  type LucideIcon,
-} from 'lucide-react';
+import { CalendarDays, ClipboardList, Search, type LucideIcon } from 'lucide-react';
 import { EmptyState, PageHeader } from '@/components/shared/page';
 
 interface AreaConfig {
@@ -44,16 +36,6 @@ export const CalendarioPage = createAreaPage({
   phase: 2,
 });
 
-export const ReunionesPage = createAreaPage({
-  title: 'Reuniones',
-  description: 'Agenda, modo reunión, notas y acuerdos de cada reunión.',
-  icon: Users,
-  emptyTitle: 'Aún no hay reuniones',
-  emptyText:
-    'Cada reunión tendrá su propia agenda, notas, decisiones confirmadas y asignaciones, independientes de la plantilla.',
-  phase: 2,
-});
-
 export const EntrevistasPage = createAreaPage({
   title: 'Entrevistas',
   description:
@@ -63,26 +45,6 @@ export const EntrevistasPage = createAreaPage({
   emptyText:
     'Registrarás solicitudes, verás la disponibilidad de cada líder y evitarás citas simultáneas.',
   phase: 3,
-});
-
-export const SeguimientosPage = createAreaPage({
-  title: 'Seguimientos',
-  description: 'Asuntos pendientes y asignaciones que se revisan en reuniones posteriores.',
-  icon: ListChecks,
-  emptyTitle: 'No hay asuntos por seguir',
-  emptyText:
-    'Las asignaciones y los asuntos pendientes que registres en una reunión se reunirán aquí.',
-  phase: 2,
-});
-
-export const PlantillasPage = createAreaPage({
-  title: 'Plantillas y Manual',
-  description: 'Catálogo de reuniones basado en el Manual General y plantillas locales.',
-  icon: BookOpen,
-  emptyTitle: 'El catálogo todavía está vacío',
-  emptyText:
-    'Antes de publicarlo se verificarán las denominaciones y frecuencias en el Manual General vigente.',
-  phase: 2,
 });
 
 export const HistorialPage = createAreaPage({

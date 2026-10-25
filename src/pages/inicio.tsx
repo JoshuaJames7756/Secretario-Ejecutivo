@@ -27,14 +27,16 @@ interface QuickAction {
   icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
   to?: string;
   phase?: number;
+  /** Solo disponible mientras hay una reunión en curso. */
+  needsActiveMeeting?: boolean;
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
   { label: 'Abrir el calendario', icon: CalendarDays, to: '/calendario' },
-  { label: 'Preparar agenda', icon: FilePlus2, phase: 2 },
-  { label: 'Registrar nota', icon: NotebookPen, phase: 2 },
-  { label: 'Crear asunto pendiente', icon: ListPlus, phase: 2 },
-  { label: 'Registrar asignación', icon: CalendarPlus, phase: 2 },
+  { label: 'Preparar agenda', icon: FilePlus2, to: '/reuniones/nueva' },
+  { label: 'Registrar nota', icon: NotebookPen, needsActiveMeeting: true },
+  { label: 'Crear asunto pendiente', icon: ListPlus, to: '/seguimientos' },
+  { label: 'Registrar asignación', icon: CalendarPlus, to: '/seguimientos' },
   { label: 'Programar entrevista', icon: UserPlus, phase: 3 },
   { label: 'Adjuntar documento', icon: Paperclip, phase: 5 },
 ];
@@ -59,6 +61,11 @@ export default function InicioPage() {
         .aboveOrEqual(Date.now())
         .filter((m) => m.deletedAt === undefined && m.status === 'programada')
         .first(),
+    [],
+  );
+
+  const activeMeeting = useLiveQuery(
+    () => db.meetings.filter((m) => m.deletedAt === undefined && m.status === 'en_curso').first(),
     [],
   );
 
@@ -89,6 +96,21 @@ export default function InicioPage() {
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
+          {activeMeeting && (
+            <Card aria-labelledby="reunion-en-curso" className="border-primary">
+              <CardTitle>
+                <span id="reunion-en-curso">Reunión en curso</span>
+              </CardTitle>
+              <p className="font-display text-2xl font-semibold">{activeMeeting.title}</p>
+              <Link
+                to={`/reuniones/${activeMeeting.id}/modo-reunion`}
+                className={cn(buttonVariants(), 'mt-3')}
+              >
+                Continuar en modo reunión
+              </Link>
+            </Card>
+          )}
+
           <Card aria-labelledby="proxima-reunion">
             <CardTitle>
               <span id="proxima-reunion">Próxima reunión</span>
@@ -97,14 +119,23 @@ export default function InicioPage() {
               <div>
                 <p className="font-display text-2xl font-semibold">{nextMeeting.title}</p>
                 <p className="mt-1 text-muted">{formatDateTime(nextMeeting.startsAt)}</p>
+                <Link
+                  to={`/reuniones/${nextMeeting.id}`}
+                  className={cn(buttonVariants({ variant: 'outline' }), 'mt-3')}
+                >
+                  Ver agenda
+                </Link>
               </div>
             ) : (
               <EmptyState
                 icon={CalendarDays}
                 title="No hay reuniones programadas"
-                description="Cuando programes reuniones desde el calendario, la siguiente aparecerá aquí con acceso directo a su agenda."
-                phase={2}
-              />
+                description="Cuando programes una reunión, la siguiente aparecerá aquí con acceso directo a su agenda."
+              >
+                <Link to="/reuniones/nueva" className={cn(buttonVariants(), 'mt-5')}>
+                  Programar una reunión
+                </Link>
+              </EmptyState>
             )}
           </Card>
 
@@ -113,37 +144,46 @@ export default function InicioPage() {
               <span id="acciones-rapidas">Acciones rápidas</span>
             </CardTitle>
             <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {QUICK_ACTIONS.map(({ label, icon: Icon, to, phase }) => (
-                <li key={label}>
-                  {to ? (
-                    <Link
-                      to={to}
-                      className={cn(
-                        buttonVariants({ variant: 'secondary' }),
-                        'w-full justify-start',
-                      )}
-                    >
-                      <Icon className="size-4" aria-hidden />
-                      {label}
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled
-                      className={cn(
-                        buttonVariants({ variant: 'secondary' }),
-                        'w-full justify-between',
-                      )}
-                    >
-                      <span className="flex items-center gap-2">
+              {QUICK_ACTIONS.map(({ label, icon: Icon, to, phase, needsActiveMeeting }) => {
+                const target = needsActiveMeeting
+                  ? activeMeeting && `/reuniones/${activeMeeting.id}/modo-reunion`
+                  : to;
+                return (
+                  <li key={label}>
+                    {target ? (
+                      <Link
+                        to={target}
+                        className={cn(
+                          buttonVariants({ variant: 'secondary' }),
+                          'w-full justify-start',
+                        )}
+                      >
                         <Icon className="size-4" aria-hidden />
                         {label}
-                      </span>
-                      {phase !== undefined && <PhaseTag phase={phase} />}
-                    </button>
-                  )}
-                </li>
-              ))}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className={cn(
+                          buttonVariants({ variant: 'secondary' }),
+                          'w-full justify-between',
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <Icon className="size-4" aria-hidden />
+                          {label}
+                        </span>
+                        {needsActiveMeeting ? (
+                          <span className="text-xs text-muted">Solo en una reunión en curso</span>
+                        ) : (
+                          phase !== undefined && <PhaseTag phase={phase} />
+                        )}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </Card>
         </div>

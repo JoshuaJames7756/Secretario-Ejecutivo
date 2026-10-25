@@ -16,6 +16,7 @@
     "check": "npm run lint && npm run format:check && npm test && npm run build"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dexie": "^4.4.7",
@@ -24,9 +25,11 @@
     "motion": "^14.6.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-hook-form": "^7.91.0",
     "react-router": "^8.5.0",
     "sonner": "^2.0.8",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

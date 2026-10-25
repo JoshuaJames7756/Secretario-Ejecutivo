@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../src/db/database';
 import {
+  LocalSaveError,
   RecordNotFoundError,
   RecoveryWindowExpiredError,
   RevisionConflictError,
@@ -105,6 +106,27 @@ describe('guardar sin conexión', () => {
   });
 });
 
+describe('errores de almacenamiento', () => {
+  it('un fallo real del almacenamiento se explica con un mensaje comprensible', async () => {
+    db.close(); // simula que el navegador cerró la base de datos
+    try {
+      const error = await createEntity('records', newNote()).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(LocalSaveError);
+      expect((error as Error).message).toMatch(/base de datos local no está disponible/);
+    } finally {
+      await db.open();
+    }
+  });
+
+  it('un error de la aplicación NO se presenta como fallo de almacenamiento', async () => {
+    const error = await updateEntity('records', 'no-existe', { content: 'x' }).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(RecordNotFoundError);
+    expect(error).not.toBeInstanceOf(LocalSaveError);
+  });
+});
+
 describe('modificar', () => {
   it('sube la revisión, conserva la fecha de creación y registra la operación', async () => {
     const note = await createEntity('records', newNote());
@@ -113,7 +135,11 @@ describe('modificar', () => {
     expect(updated.rev).toBe(2);
     expect(updated.createdAt).toBe(note.createdAt);
     expect(updated.content).toBe('Texto nuevo');
-    expect(await db.syncOps.count()).toBe(2);
+    // Mientras la creación siga pendiente, el cambio se fusiona en la misma operación.
+    const ops = await db.syncOps.toArray();
+    expect(ops).toHaveLength(1);
+    expect(ops[0]?.rev).toBe(2);
+    expect(await db.changeLog.count()).toBe(2); // el historial sí registra cada cambio
   });
 
   it('no deja operaciones a medias si el registro no existe', async () => {
@@ -132,6 +158,41 @@ describe('modificar', () => {
       updateEntity('records', note.id, { content: 'Mi cambio' }, { expectedRev: note.rev }),
     ).rejects.toBeInstanceOf(RevisionConflictError);
     expect((await db.records.get(note.id))?.content).toBe('Cambio desde otro dispositivo');
+  });
+});
+
+describe('cola de sincronización', () => {
+  it('muchos cambios seguidos a un registro dejan una sola operación pendiente', async () => {
+    const note = await createEntity('records', newNote('a'));
+    for (let i = 0; i < 25; i++) await updateEntity('records', note.id, { content: `v${i}` });
+
+    const ops = await db.syncOps.toArray();
+    expect(ops).toHaveLength(1);
+    expect(ops[0]).toMatchObject({ status: 'pendiente', rev: 26 });
+  });
+
+  it('nunca fusiona con una operación ya enviada', async () => {
+    const note = await createEntity('records', newNote());
+    const [sent] = await db.syncOps.toArray();
+    await db.syncOps.update(sent!.id, { status: 'confirmada' });
+
+    await updateEntity('records', note.id, { content: 'después del envío' });
+
+    const ops = (await db.syncOps.toArray()).sort((a, b) => a.rev - b.rev);
+    expect(ops.map((o) => [o.status, o.rev])).toEqual([
+      ['confirmada', 1],
+      ['pendiente', 2],
+    ]);
+  });
+
+  it('no mueve un cambio por delante de un borrado o una restauración', async () => {
+    const note = await createEntity('records', newNote());
+    const deleted = await softDeleteEntity('records', note.id);
+    await restoreEntity('records', note.id, deleted.deletedAt! + 1000);
+    await updateEntity('records', note.id, { content: 'tras restaurar' });
+
+    const ops = (await db.syncOps.toArray()).sort((a, b) => a.rev - b.rev);
+    expect(ops.map((o) => o.op)).toEqual(['upsert', 'delete', 'restore', 'upsert']);
   });
 });
 
