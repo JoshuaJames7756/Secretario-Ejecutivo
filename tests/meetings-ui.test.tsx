@@ -153,4 +153,42 @@ describe('flujo de reunión en pantalla', () => {
       vi.useRealTimers();
     }
   });
+
+  it('entrevistas: registra una solicitud, la programa y bloquea una cita simultánea', async () => {
+    const user = userEvent.setup();
+    window.history.pushState({}, '', '/entrevistas/nueva');
+    render(<App />);
+    await user.type(await screen.findByLabelText('Nombre de la persona'), 'Ana Pérez');
+    await user.click(screen.getByRole('checkbox', { name: /presidente de estaca/ }));
+    await user.click(screen.getByRole('button', { name: 'Registrar solicitud' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ana Pérez' })).toBeTruthy();
+
+    // Primera cita
+    const when = (await screen.findByLabelText('Fecha y hora')) as HTMLInputElement;
+    await user.clear(when);
+    await user.type(when, '2030-03-04T19:00');
+    await user.click(screen.getByRole('button', { name: 'Programar cita' }));
+    await waitFor(async () => expect(await db.interviewAppointments.count()).toBe(1));
+    expect(await screen.findByRole('button', { name: /Copiar mensaje/ })).toBeTruthy();
+
+    // Segunda solicitud al mismo presidente y a la misma hora: bloqueada
+    const second = await createEntity('interviewRequests', {
+      personName: 'Luis Rojas',
+      receivedAt: Date.now(),
+      mustBeWithPresident: true,
+      requestedLeader: 'presidente',
+      status: 'recibida',
+    });
+    cleanup();
+    window.history.pushState({}, '', `/entrevistas/${second.id}`);
+    render(<App />);
+    const when2 = (await screen.findByLabelText('Fecha y hora')) as HTMLInputElement;
+    await user.clear(when2);
+    await user.type(when2, '2030-03-04T19:15');
+    expect(await screen.findByText(/no se permiten dos citas a la vez/)).toBeTruthy();
+    expect(
+      (screen.getByRole('button', { name: 'Programar cita' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(await db.interviewAppointments.count()).toBe(1);
+  });
 });

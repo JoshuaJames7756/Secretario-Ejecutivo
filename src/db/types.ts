@@ -120,6 +120,8 @@ export interface Organization extends BaseEntity {
   name: string;
   category: 'barrio' | 'rama' | 'organizacion' | 'comite';
   status: 'activa' | 'archivada';
+  /** Consejero asignado a este barrio o rama (para sugerir con quién coordinar). */
+  assignedLeader?: Leader;
 }
 
 export type Leader = 'presidente' | 'primer_consejero' | 'segundo_consejero';
@@ -154,6 +156,8 @@ export interface InterviewRequest extends BaseEntity {
   requestedLeader?: Leader;
   mustBeWithPresident: boolean;
   timePreferences?: string;
+  /** En lista de espera: no hubo horario disponible todavía. */
+  waitlist?: boolean;
   status: InterviewRequestStatus;
   notes?: string;
 }

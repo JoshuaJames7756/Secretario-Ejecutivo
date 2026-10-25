@@ -37,7 +37,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   { label: 'Registrar nota', icon: NotebookPen, needsActiveMeeting: true },
   { label: 'Crear asunto pendiente', icon: ListPlus, to: '/seguimientos' },
   { label: 'Registrar asignación', icon: CalendarPlus, to: '/seguimientos' },
-  { label: 'Programar entrevista', icon: UserPlus, phase: 3 },
+  { label: 'Programar entrevista', icon: UserPlus, to: '/entrevistas/nueva' },
   { label: 'Adjuntar documento', icon: Paperclip, phase: 5 },
 ];
 

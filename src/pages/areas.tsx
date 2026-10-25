@@ -1,4 +1,4 @@
-import { ClipboardList, Search, type LucideIcon } from 'lucide-react';
+import { Search, type LucideIcon } from 'lucide-react';
 import { EmptyState, PageHeader } from '@/components/shared/page';
 
 interface AreaConfig {
@@ -26,17 +26,6 @@ function createAreaPage(config: AreaConfig) {
     );
   };
 }
-
-export const EntrevistasPage = createAreaPage({
-  title: 'Entrevistas',
-  description:
-    'Coordinación de solicitudes con la presidencia, sin registrar contenido confidencial.',
-  icon: ClipboardList,
-  emptyTitle: 'Sin solicitudes de entrevista',
-  emptyText:
-    'Registrarás solicitudes, verás la disponibilidad de cada líder y evitarás citas simultáneas.',
-  phase: 3,
-});
 
 export const HistorialPage = createAreaPage({
   title: 'Historial y búsqueda',

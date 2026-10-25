@@ -7,10 +7,14 @@ import { seedCatalog } from '@/features/templates/service';
 import { useTheme } from '@/hooks/use-theme';
 import { describeError } from '@/lib/actions';
 import { requestPersistence } from '@/lib/storage';
-import { EntrevistasPage, HistorialPage } from '@/pages/areas';
+import { HistorialPage } from '@/pages/areas';
 import CalendarioPage from '@/pages/calendario';
 import ConfiguracionPage from '@/pages/configuracion';
 import InicioPage from '@/pages/inicio';
+import EntrevistaDetallePage from '@/pages/entrevista-detalle';
+import EntrevistaNuevaPage from '@/pages/entrevista-nueva';
+import EntrevistasConfiguracionPage from '@/pages/entrevistas-configuracion';
+import EntrevistasPage from '@/pages/entrevistas';
 import MasPage from '@/pages/mas';
 import ModoReunionPage from '@/pages/modo-reunion';
 import ReunionDetallePage from '@/pages/reunion-detalle';
@@ -47,6 +51,9 @@ export default function App() {
               <Route path="reuniones/:id" element={<ReunionDetallePage />} />
               <Route path="reuniones/:id/modo-reunion" element={<ModoReunionPage />} />
               <Route path="entrevistas" element={<EntrevistasPage />} />
+              <Route path="entrevistas/nueva" element={<EntrevistaNuevaPage />} />
+              <Route path="entrevistas/configuracion" element={<EntrevistasConfiguracionPage />} />
+              <Route path="entrevistas/:id" element={<EntrevistaDetallePage />} />
               <Route path="seguimientos" element={<SeguimientosPage />} />
               <Route path="plantillas" element={<PlantillasPage />} />
               <Route path="plantillas/:id" element={<PlantillaDetallePage />} />

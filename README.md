@@ -114,11 +114,18 @@ la reunión; agregar o "ahora no", nunca automático.
 
 Falta para cerrar la Fase 2: pruebas en navegador real (Playwright) y revisión visual en Android.
 
+## Entrevistas (Fase 3)
+
+Solo coordinación administrativa: no hay campo para el motivo ni el contenido. Regla dura: nunca
+dos citas a la vez con el mismo líder (se comprueba dentro de la misma transacción que guarda la
+cita). Salir de la disponibilidad configurada avisa y solo se permite con confirmación expresa.
+El mensaje de WhatsApp es un borrador editable que se copia; la aplicación no envía nada.
+
 ## Límites conocidos
 
 - Sin pruebas en navegador real (Playwright) ni revisión visual en Android todavía; las pruebas
   actuales usan jsdom.
-- Entrevistas e Historial muestran su propósito y la fase en que llegan; no simulan datos.
+- Historial muestra su propósito y la fase en que llegan; no simulan datos.
 - Los datos del Manual General del catálogo deben ser verificados por una persona antes de confiar en ellos.
 - Eliminar una reunión no elimina sus seguimientos (se gestionan por separado).
 - Almacenamiento persistente: Chrome decide si lo concede. La pantalla de Configuración muestra el estado real.
@@ -127,7 +134,7 @@ Falta para cerrar la Fase 2: pruebas en navegador real (Playwright) y revisión 
 
 1. Base del proyecto (hecha).
 2. Ciclo central local (funcional, falta verificación en navegador real).
-3. Entrevistas y disponibilidad.
+3. Entrevistas y disponibilidad (funcional: barrios con consejero asignado, disponibilidad semanal y por fecha, solicitudes, citas sin choques, lista de espera, mensaje para copiar a WhatsApp).
 4. Autenticación y sincronización (Workers, Hono, D1, Drizzle, Better Auth).
 5. Adjuntos, papelera visible, versiones e informes.
 6. Validación final.

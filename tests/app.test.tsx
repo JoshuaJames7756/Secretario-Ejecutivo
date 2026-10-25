@@ -57,9 +57,12 @@ describe('aplicación', () => {
     const note = screen.getByRole('button', { name: /Registrar nota/ });
     expect((note as HTMLButtonElement).disabled).toBe(true);
     // Las de fases posteriores siguen deshabilitadas y dicen su fase.
-    const interview = screen.getByRole('button', { name: /Programar entrevista/ });
-    expect((interview as HTMLButtonElement).disabled).toBe(true);
-    expect(within(interview).getByText('Fase 3')).toBeTruthy();
+    const attach = screen.getByRole('button', { name: /Adjuntar documento/ });
+    expect((attach as HTMLButtonElement).disabled).toBe(true);
+    expect(within(attach).getByText('Fase 5')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Programar entrevista/ }).getAttribute('href')).toBe(
+      '/entrevistas/nueva',
+    );
     expect(screen.getByRole('link', { name: /Abrir el calendario/ }).getAttribute('href')).toBe(
       '/calendario',
     );
