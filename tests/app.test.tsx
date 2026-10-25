@@ -153,6 +153,11 @@ describe('aplicación', () => {
     window.history.pushState({}, '', '/configuracion');
     render(<App />);
     expect(await screen.findByText(/no informa del estado del almacenamiento/)).toBeTruthy();
-    expect(screen.getByText(/Aún no hay respaldos/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Crear y descargar respaldo/ })).toBeTruthy();
+    // Sin contraseña válida no se puede crear un respaldo.
+    expect(
+      (screen.getByRole('button', { name: /Crear y descargar respaldo/ }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
 });

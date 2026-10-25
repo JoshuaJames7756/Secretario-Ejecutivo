@@ -103,8 +103,12 @@ Hecho: catálogo de plantillas (datos del Manual marcados "por verificar"), reun
 propia copiada de la plantilla, modo reunión con notas autoguardadas, registros (propuesta,
 decisión, asignación, asunto pendiente, nota informativa), Seguimientos e Inicio conectado.
 
-Falta de la Fase 2: sugerencias de agenda desde seguimientos abiertos, vistas de calendario,
-respaldo cifrado exportable con restauración verificada.
+Respaldo cifrado (Configuración): PBKDF2-SHA256 (600 000 iteraciones) + AES-256-GCM, el
+encabezado va autenticado, se verifica al crear (se vuelve a abrir y se compara) y la restauración
+es transaccional con comprobación posterior. Si se pierde la contraseña no hay recuperación.
+Los adjuntos (Fase 5) aún no llevan archivos, solo sus metadatos.
+
+Falta de la Fase 2: sugerencias de agenda desde seguimientos abiertos y vistas de calendario.
 
 ## Límites conocidos
 

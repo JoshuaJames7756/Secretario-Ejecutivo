@@ -220,7 +220,7 @@ export default function InicioPage() {
                   <dd className="text-muted">
                     {lastBackupAt
                       ? formatDateTime(lastBackupAt)
-                      : 'Todavía no hay respaldos. La exportación llega en la Fase 2.'}
+                      : 'Todavía no hay respaldos. Crea uno en Configuración.'}
                   </dd>
                 </div>
               </div>

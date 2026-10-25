@@ -5,6 +5,7 @@ import { Card, CardTitle, PageHeader, PhaseTag } from '@/components/shared/page'
 import { Button } from '@/components/ui/button';
 import { db } from '@/db/database';
 import { ENTITY_NAMES } from '@/db/repo';
+import { BackupCard } from '@/features/backup/components/backup-card';
 import { useStorageStatus } from '@/hooks/use-storage-status';
 import { useTheme, type ThemePreference } from '@/hooks/use-theme';
 import { APP_PHASE, APP_VERSION } from '@/lib/constants';
@@ -177,11 +178,7 @@ export default function ConfiguracionPage() {
         <ThemeCard />
         <StorageCard />
         <DatabaseCard />
-        <FuturePlanCard
-          title="Respaldo cifrado"
-          text="Exportación completa con contraseña y verificación de restauración. Aún no hay respaldos."
-          phase={2}
-        />
+        <BackupCard />
         <FuturePlanCard
           title="Sincronización entre dispositivos"
           text="Cuenta privada, cola de cambios y resolución de conflictos."
