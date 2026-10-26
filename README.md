@@ -61,6 +61,35 @@ si no hay avisos, cámbiala a `Content-Security-Policy` para que se aplique.
 > orientado a equipos de menos de 50 usuarios, pero **no se pudo confirmar si exige tarjeta**; se
 > verifica al activarlo, y si la pide, la alternativa es la autenticación propia (Better Auth) de la Fase 4.
 
+## Servidor de sincronización (Fase 4A)
+
+API en `worker/` (Cloudflare Workers + Hono), datos en D1 (`worker/db/schema.ts`, migraciones en `migrations/`),
+contrato compartido con la app en `shared/contract.ts`.
+
+- `POST /api/sync/push`: hasta 25 operaciones. Cada una indica sobre qué revisión del servidor se hizo (`expectedRev`).
+  Si el servidor ya avanzó, **no se sobrescribe**: responde `conflict` con la versión del servidor.
+  Repetir una operación es seguro (`duplicate`).
+- `GET /api/sync/pull?since=N&limit=M`: cambios posteriores al cursor, en orden.
+- `GET /api/health`: público, sin datos.
+- Seguridad: cada ruta privada verifica el token de Clerk (firma, caducidad, origen) y exige que `sub` sea `OWNER_USER_ID`.
+  Sin configuración, el servidor responde 503 (cierra, no abre).
+
+### Puesta en marcha (una sola vez)
+
+1. Crear la base: `npx wrangler d1 create secretaria-estaca` y copiar el `database_id` en `wrangler.jsonc`.
+2. Aplicar migraciones: `npm run db:migrate:remote` (en local: `npm run db:migrate:local`).
+3. En Clerk: crear la aplicación, activar solo correo y contraseña o enlace por correo, y copiar la clave pública JWT.
+4. Secretos del Worker (Cloudflare, Settings, Variables and Secrets): `CLERK_JWT_KEY` (la clave pública PEM),
+   `OWNER_USER_ID` (tu `sub` de Clerk, se ve en Users) y opcionalmente `APP_ORIGIN`.
+5. Desarrollo: `npm run dev:api` en una terminal y `npm run dev` en otra (Vite envía `/api` al Worker local).
+
+Si cambias `worker/db/schema.ts`: `npm run db:generate` crea una migración nueva. Nunca se edita una ya aplicada.
+
+### Límites del plan gratuito a vigilar
+
+Workers: 100 000 solicitudes por día y 10 ms de CPU por solicitud. D1: 5 millones de filas leídas y 100 000 escritas por día.
+Con una sola persona sobra; el diseño usa lotes pequeños y solo `/api/*` ejecuta el Worker.
+
 ## Estructura
 
 ```text

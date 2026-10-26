@@ -49,6 +49,10 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  server: {
+    // En desarrollo, /api llega al Worker local (`npm run dev:api`).
+    proxy: { '/api': 'http://localhost:8787' },
+  },
   test: {
     environment: 'node',
     setupFiles: ['./tests/setup.ts'],

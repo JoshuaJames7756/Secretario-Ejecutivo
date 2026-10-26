@@ -17,5 +17,6 @@
     "types": ["vite/client", "vite-plugin-pwa/client", "node"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": ["src", "shared", "tests", "vite.config.ts"],
+  "exclude": ["tests/worker"]
 }
