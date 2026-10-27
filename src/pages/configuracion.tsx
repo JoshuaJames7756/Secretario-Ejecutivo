@@ -5,6 +5,8 @@ import { Card, CardTitle, PageHeader, PhaseTag } from '@/components/shared/page'
 import { Button } from '@/components/ui/button';
 import { db } from '@/db/database';
 import { ENTITY_NAMES } from '@/db/repo';
+import { Link } from 'react-router';
+import { useSyncStatus } from '@/features/sync/use-sync-status';
 import { BackupCard } from '@/features/backup/components/backup-card';
 import { useStorageStatus } from '@/hooks/use-storage-status';
 import { useTheme, type ThemePreference } from '@/hooks/use-theme';
@@ -51,6 +53,21 @@ function ThemeCard() {
           );
         })}
       </div>
+    </Card>
+  );
+}
+
+function SyncCard() {
+  const status = useSyncStatus();
+  return (
+    <Card aria-labelledby="sync">
+      <CardTitle>
+        <span id="sync">Sincronización</span>
+      </CardTitle>
+      <p className="text-sm text-muted">Estado actual: {status.label}.</p>
+      <Link to="/sincronizacion" className="mt-3 inline-block text-sm font-medium underline">
+        Abrir sincronización
+      </Link>
     </Card>
   );
 }
@@ -176,6 +193,7 @@ export default function ConfiguracionPage() {
       />
       <div className="grid gap-5 md:grid-cols-2">
         <ThemeCard />
+        <SyncCard />
         <StorageCard />
         <DatabaseCard />
         <BackupCard />

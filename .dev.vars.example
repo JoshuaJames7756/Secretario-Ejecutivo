@@ -1,0 +1,5 @@
+# Copia como .dev.vars para `npm run dev:api`. Nunca subas .dev.vars a Git (ya está ignorado).
+# Clave publica JWT de Clerk en formato PEM, en UNA sola linea con \n entre lineas.
+CLERK_JWT_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+# Tu id de usuario de Clerk (user_...).
+OWNER_USER_ID=user_xxxxxxxx

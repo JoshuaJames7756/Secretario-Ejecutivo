@@ -15,7 +15,7 @@
       "binding": "DB",
       "database_name": "secretaria-estaca",
       // Se rellena tras `wrangler d1 create secretaria-estaca` (ver README, sección Fase 4).
-      "database_id": "c9488a54-ab11-40e9-adc9-e36baf8bfbd7",
+      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations",
     },
   ],

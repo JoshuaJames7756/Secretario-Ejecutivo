@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { Toaster, toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
+import { SyncRoot } from '@/features/sync/sync-root';
 import { seedCatalog } from '@/features/templates/service';
 import { useTheme } from '@/hooks/use-theme';
 import { describeError } from '@/lib/actions';
@@ -22,6 +23,7 @@ import ReunionInformePage from '@/pages/reunion-informe';
 import ReunionNuevaPage from '@/pages/reunion-nueva';
 import ReunionesPage from '@/pages/reuniones';
 import SeguimientosPage from '@/pages/seguimientos';
+import SincronizacionPage from '@/pages/sincronizacion';
 import PapeleraPage from '@/pages/papelera';
 import PlantillaDetallePage from '@/pages/plantilla-detalle';
 import PlantillaEditarPage from '@/pages/plantilla-editar';
@@ -64,11 +66,13 @@ export default function App() {
               <Route path="papelera" element={<PapeleraPage />} />
               <Route path="historial" element={<HistorialPage />} />
               <Route path="configuracion" element={<ConfiguracionPage />} />
+              <Route path="sincronizacion" element={<SincronizacionPage />} />
               <Route path="mas" element={<MasPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
         </BrowserRouter>
+        <SyncRoot />
         <Toaster position="top-center" theme={isDark ? 'dark' : 'light'} />
       </LazyMotion>
     </MotionConfig>

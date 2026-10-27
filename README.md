@@ -90,6 +90,29 @@ Si cambias `worker/db/schema.ts`: `npm run db:generate` crea una migración nuev
 Workers: 100 000 solicitudes por día y 10 ms de CPU por solicitud. D1: 5 millones de filas leídas y 100 000 escritas por día.
 Con una sola persona sobra; el diseño usa lotes pequeños y solo `/api/*` ejecuta el Worker.
 
+## Sincronización en la app (Fase 4B)
+
+Pantalla `/sincronizacion` (también desde el indicador de estado de la barra superior y Configuración).
+
+- Lo local manda: todo se guarda primero en este dispositivo y la app funciona igual sin sesión ni conexión.
+- Con sesión de Clerk, los cambios se envían en lotes pequeños y se reciben los de otros dispositivos.
+- Nunca se pisa nada en silencio. Si el mismo elemento cambió en dos dispositivos, aparece como **conflicto** con los dos
+  lados a la vista y tres opciones: conservar la de este dispositivo, usar la del servidor (tu texto queda en
+  «Versiones anteriores») o conservar ambas (solo notas de texto).
+- Los archivos adjuntos todavía no se sincronizan; se quedan solo en este dispositivo.
+- Tras restaurar un respaldo, todo se vuelve a ofrecer al servidor y cualquier diferencia se muestra como conflicto.
+
+### Activarla (una sola vez)
+
+1. En Clerk copia la **Publishable key** (`pk_...`, pública por diseño).
+2. Cloudflare, Worker `schedule`, Settings, **Builds**, Variables and secrets: añade `VITE_CLERK_PUBLISHABLE_KEY`
+   (esta va en Builds porque se incorpora al compilar; los secretos `CLERK_JWT_KEY` y `OWNER_USER_ID` van en
+   Runtime). En local usa `.env.local` (ver `.env.example`).
+3. Sube los cambios; al terminar el build, abre la app y entra a Sincronización, Iniciar sesión.
+4. Regístrate con tu correo. Copia tu `user_...` de Clerk, Users, y ponlo en el secreto `OWNER_USER_ID` si aún no lo hiciste.
+
+Sin la clave, la app sigue funcionando y la pantalla lo explica.
+
 ## Estructura
 
 ```text
@@ -181,4 +204,3 @@ El mensaje de WhatsApp es un borrador editable que se copia; la aplicación no e
 4. Autenticación y sincronización (Workers, Hono, D1, Drizzle, Better Auth).
 5. Adjuntos, papelera visible, versiones e informes.
 6. Validación final.
-.

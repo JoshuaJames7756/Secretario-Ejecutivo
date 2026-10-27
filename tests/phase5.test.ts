@@ -16,7 +16,7 @@ beforeEach(async () => {
 });
 
 describe('migración del esquema', () => {
-  it('pasar de la versión 1 a la 2 conserva todos los datos', async () => {
+  it('pasar de la versión 1 a la 3 conserva todos los datos', async () => {
     const name = `migracion-${Math.random()}`;
     const old = new Dexie(name);
     old.version(1).stores({
@@ -29,10 +29,46 @@ describe('migración del esquema', () => {
 
     const upgraded = new AppDatabase(name);
     await upgraded.open();
-    expect(upgraded.verno).toBe(2);
+    expect(upgraded.verno).toBe(3);
     expect((await upgraded.meetings.get('m1'))?.title).toBe('Antigua');
     expect((await upgraded.settings.get('deviceId'))?.value).toBe('abc');
     expect(await upgraded.versions.count()).toBe(0);
+    expect(await upgraded.serverRevs.count()).toBe(0);
+    expect(await upgraded.syncConflicts.count()).toBe(0);
+    upgraded.close();
+    await Dexie.delete(name);
+  });
+});
+
+describe('migración 2 a 3 (sincronización)', () => {
+  it('conserva los datos y la cola de envío pendiente', async () => {
+    const name = `migracion-v2-${Math.random()}`;
+    const old = new Dexie(name);
+    old.version(1).stores({
+      meetings: 'id, templateId, startsAt, status, seriesId, updatedAt',
+      syncOps: 'id, status, createdAt, [entity+entityId]',
+      settings: 'key',
+    });
+    old.version(2).stores({ versions: 'id, [entity+entityId], at' });
+    await old.table('meetings').put({ id: 'm1', title: 'Con cola', startsAt: 1, rev: 2 });
+    await old.table('syncOps').put({
+      id: 'op1',
+      entity: 'meetings',
+      entityId: 'm1',
+      op: 'upsert',
+      rev: 2,
+      deviceId: 'd',
+      status: 'pendiente',
+      attempts: 0,
+      createdAt: 1,
+    });
+    old.close();
+
+    const upgraded = new AppDatabase(name);
+    await upgraded.open();
+    expect(upgraded.verno).toBe(3);
+    expect((await upgraded.syncOps.get('op1'))?.status).toBe('pendiente');
+    expect((await upgraded.meetings.get('m1'))?.title).toBe('Con cola');
     upgraded.close();
     await Dexie.delete(name);
   });

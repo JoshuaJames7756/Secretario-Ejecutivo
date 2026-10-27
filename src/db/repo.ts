@@ -18,6 +18,9 @@ import type {
   SyncOperation,
 } from './types';
 
+/** Clave de un documento en las tablas de sincronización. */
+export const syncKey = (entity: string, id: Id): string => `${entity}:${id}`;
+
 /** Tablas de negocio: todas llevan `rev`, borrado lógico, historial y cola de sincronización. */
 export interface TableEntities {
   templates: MeetingTemplate;
@@ -336,6 +339,94 @@ export async function purgeExpired(now = Date.now()): Promise<number> {
   return purged;
 }
 
+/* ---------- Sincronización ---------- */
+
+export type RemoteApplyResult = 'aplicado' | 'sin-cambios' | 'omitido';
+
+/**
+ * Aplica un documento recibido del servidor. No crea operación de envío (no se devuelve lo que
+ * acaba de llegar) y guarda en la misma transacción la revisión que el servidor confirmó.
+ *
+ * Regla de seguridad: si aquí hay cambios sin enviar de ese documento, NO se sobrescriben
+ * (`omitido`). El conflicto, si lo hay, aparecerá al enviar y lo decide la persona.
+ * `force` solo lo usa la resolución explícita de un conflicto.
+ */
+export async function applyRemoteDoc<K extends EntityName>(
+  name: K,
+  doc: TableEntities[K],
+  options: { force?: boolean } = {},
+): Promise<RemoteApplyResult> {
+  return guard(() =>
+    db.transaction('rw', db.table(name), db.syncOps, db.serverRevs, async () => {
+      const key = syncKey(name, doc.id);
+      const local = await table(name).get(doc.id);
+      if (!options.force) {
+        const unsent = await db.syncOps
+          .where('[entity+entityId]')
+          .equals([name, doc.id])
+          .filter((o) => o.status !== 'confirmada')
+          .count();
+        if (unsent > 0) return 'omitido';
+        if (local && local.rev >= doc.rev) {
+          if (local.rev === doc.rev) await db.serverRevs.put({ key, rev: doc.rev });
+          return 'sin-cambios';
+        }
+      }
+      await table(name).put(doc);
+      await db.serverRevs.put({ key, rev: doc.rev });
+      return 'aplicado';
+    }),
+  );
+}
+
+/**
+ * Tras decidir "conservar la mía" en un conflicto: sube la revisión local por encima de la del
+ * servidor y la deja pendiente de envío. Nada se pierde ni se pisa en silencio.
+ */
+export async function rebaseForSync<K extends EntityName>(
+  name: K,
+  id: Id,
+  serverRev: number,
+): Promise<TableEntities[K]> {
+  const deviceId = await guard(() => getDeviceId());
+  return guard(() =>
+    db.transaction('rw', db.table(name), db.changeLog, db.syncOps, db.serverRevs, async () => {
+      const current = await table(name).get(id);
+      if (!current) throw new RecordNotFoundError(name, id);
+      const next = { ...current, rev: Math.max(current.rev, serverRev) + 1, updatedAt: Date.now() };
+      await table(name).put(next);
+      await db.serverRevs.put({ key: syncKey(name, id), rev: serverRev });
+      await track(name, id, 'update', next.rev, next.updatedAt, deviceId);
+      return next;
+    }),
+  );
+}
+
+/**
+ * Deja pendiente de envío todo lo que hay en este dispositivo. Se usa tras restaurar un respaldo,
+ * que reemplaza los datos y vacía la cola. Debe llamarse dentro de una transacción que incluya
+ * todas las tablas de negocio y `syncOps`.
+ */
+export async function queueAllForSync(deviceId: Id): Promise<void> {
+  const now = Date.now();
+  for (const name of ENTITY_NAMES) {
+    const all = await table(name).toArray();
+    for (const entity of all) {
+      await db.syncOps.add({
+        id: newId(),
+        entity: name,
+        entityId: entity.id,
+        op: 'upsert',
+        rev: entity.rev,
+        deviceId,
+        status: 'pendiente',
+        attempts: 0,
+        createdAt: now,
+      });
+    }
+  }
+}
+
 /**
  * Ejecuta varias escrituras como una sola unidad: o se guardan todas o ninguna.
  * Úsalo cuando una acción de la persona crea o cambia varios registros a la vez
@@ -348,6 +439,8 @@ export function runInTransaction<T>(fn: () => Promise<T>): Promise<T> {
     db.syncOps,
     db.settings,
     db.versions,
+    db.serverRevs,
+    db.syncConflicts,
   ];
   return guard(() => db.transaction('rw', tables, fn));
 }

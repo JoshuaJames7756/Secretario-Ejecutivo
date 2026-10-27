@@ -211,7 +211,7 @@ export interface ChangeLogEntry {
   at: number;
 }
 
-export type SyncOpStatus = 'pendiente' | 'enviando' | 'error' | 'confirmada';
+export type SyncOpStatus = 'pendiente' | 'enviando' | 'error' | 'conflicto' | 'confirmada';
 
 /**
  * Operación pendiente de enviar al servidor (fase 4).
@@ -229,6 +229,26 @@ export interface SyncOperation {
   attempts: number;
   createdAt: number;
   lastError?: string;
+}
+
+/** Última revisión de un documento que el servidor confirmó. Sirve para detectar conflictos. */
+export interface ServerRev {
+  /** `entidad:id` */
+  key: string;
+  rev: number;
+}
+
+/** Cambio que no se pudo enviar porque el servidor ya tenía otra versión. Espera una decisión. */
+export interface SyncConflict {
+  /** `entidad:id`: un solo conflicto abierto por documento. */
+  id: string;
+  entity: string;
+  entityId: Id;
+  /** Versión de este dispositivo en el momento del conflicto. */
+  local: Record<string, unknown>;
+  /** Versión que tiene el servidor. */
+  server: Record<string, unknown>;
+  detectedAt: number;
 }
 
 export interface Setting {

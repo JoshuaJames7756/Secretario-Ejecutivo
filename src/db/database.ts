@@ -12,7 +12,9 @@ import type {
   MeetingTemplate,
   NoteVersion,
   Organization,
+  ServerRev,
   Setting,
+  SyncConflict,
   SyncOperation,
 } from './types';
 
@@ -40,6 +42,8 @@ export class AppDatabase extends Dexie {
   syncOps!: EntityTable<SyncOperation, 'id'>;
   settings!: EntityTable<Setting, 'key'>;
   versions!: EntityTable<NoteVersion, 'id'>;
+  serverRevs!: EntityTable<ServerRev, 'key'>;
+  syncConflicts!: EntityTable<SyncConflict, 'id'>;
 
   constructor(name: string = DB_NAME) {
     super(name);
@@ -64,6 +68,12 @@ export class AppDatabase extends Dexie {
     // v2: versiones anteriores de las notas. Solo se añade una tabla; no se toca ningún dato.
     this.version(2).stores({
       versions: 'id, [entity+entityId], at',
+    });
+
+    // v3: sincronización. Revisión confirmada por el servidor y conflictos abiertos.
+    this.version(3).stores({
+      serverRevs: 'key',
+      syncConflicts: 'id, entity',
     });
   }
 }

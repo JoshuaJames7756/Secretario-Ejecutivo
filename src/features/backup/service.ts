@@ -1,6 +1,6 @@
 import { db } from '@/db/database';
-import { ENTITY_NAMES, type EntityName } from '@/db/repo';
-import { SETTING_KEYS, setSetting } from '@/db/settings';
+import { ENTITY_NAMES, queueAllForSync, type EntityName } from '@/db/repo';
+import { SETTING_KEYS, SYNC_CURSOR_KEY, getDeviceId, setSetting } from '@/db/settings';
 import { APP_VERSION } from '@/lib/constants';
 import { ValidationError } from '@/features/followups/service';
 import { PBKDF2_ITERATIONS, decrypt, encrypt, sha256Hex, type KdfParams } from './crypto';
@@ -245,7 +245,15 @@ export async function restoreBackup(text: string, password: string): Promise<Bac
 
   await db.transaction(
     'rw',
-    [...names.map((n) => db.table(n)), db.changeLog, db.syncOps, db.versions],
+    [
+      ...names.map((n) => db.table(n)),
+      db.changeLog,
+      db.syncOps,
+      db.versions,
+      db.serverRevs,
+      db.syncConflicts,
+      db.settings,
+    ],
     async () => {
       for (const name of names) {
         await db.table(name).clear();
@@ -255,6 +263,12 @@ export async function restoreBackup(text: string, password: string): Promise<Bac
       await db.changeLog.clear();
       await db.syncOps.clear();
       await db.versions.clear();
+      // Lo restaurado es la verdad de este dispositivo: se vuelve a ofrecer todo al servidor.
+      // Si el servidor ya tenía otra versión de algo, se avisará como conflicto, nunca se pisa.
+      await db.serverRevs.clear();
+      await db.syncConflicts.clear();
+      await db.settings.delete(SYNC_CURSOR_KEY);
+      await queueAllForSync(await getDeviceId());
     },
   );
 
