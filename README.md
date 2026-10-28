@@ -204,3 +204,4 @@ El mensaje de WhatsApp es un borrador editable que se copia; la aplicación no e
 4. Autenticación y sincronización (Workers, Hono, D1, Drizzle, Better Auth).
 5. Adjuntos, papelera visible, versiones e informes.
 6. Validación final.
+hey
