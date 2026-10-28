@@ -3,7 +3,15 @@ import { ENTITY_NAMES, queueAllForSync, type EntityName } from '@/db/repo';
 import { SETTING_KEYS, SYNC_CURSOR_KEY, getDeviceId, setSetting } from '@/db/settings';
 import { APP_VERSION } from '@/lib/constants';
 import { ValidationError } from '@/features/followups/service';
-import { PBKDF2_ITERATIONS, decrypt, encrypt, sha256Hex, type KdfParams } from './crypto';
+import {
+  PBKDF2_ITERATIONS,
+  decrypt,
+  encrypt,
+  fromBase64,
+  sha256Hex,
+  toBase64,
+  type KdfParams,
+} from './crypto';
 
 export const BACKUP_FORMAT = 'secretaria-estaca-respaldo';
 export const BACKUP_VERSION = 1;
@@ -71,21 +79,50 @@ export function checkPassword(password: string): void {
   }
 }
 
+/**
+ * Las fotos son binarios y JSON no los puede llevar (un Blob se convertiría en `{}` y la foto se
+ * perdería en silencio). Se guardan como texto base64 dentro del respaldo cifrado y se
+ * reconstruyen al restaurar.
+ */
+interface EncodedBlob {
+  __blob: string;
+  type: string;
+}
+
+async function encodeRow(row: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const blob = row['blob'];
+  if (!(blob instanceof Blob)) return row;
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const encoded: EncodedBlob = { __blob: toBase64(bytes), type: blob.type };
+  return { ...row, blob: encoded };
+}
+
+function decodeRow(row: Record<string, unknown>): Record<string, unknown> {
+  const value = row['blob'] as Partial<EncodedBlob> | undefined;
+  if (!value || typeof value !== 'object' || typeof value.__blob !== 'string') return row;
+  return { ...row, blob: new Blob([fromBase64(value.__blob)], { type: value.type ?? '' }) };
+}
+
 /** Datos incluidos: todas las tablas de contenido (incluida la papelera). Sin ajustes del dispositivo. */
 async function collect(): Promise<Payload> {
   const tables: Record<string, Rows> = {};
   const counts: Record<string, number> = {};
+  const raw: Record<string, Rows> = {};
   await db.transaction(
     'r',
     ENTITY_NAMES.map((n) => db.table(n)),
     async () => {
       for (const name of ENTITY_NAMES) {
-        const rows = (await db.table(name).toArray()) as Rows;
-        tables[name] = rows;
-        counts[name] = rows.length;
+        raw[name] = (await db.table(name).toArray()) as Rows;
       }
     },
   );
+  // Fuera de la transacción: codificar fotos es asíncrono y no debe mantenerla abierta.
+  for (const name of ENTITY_NAMES) {
+    const rows = raw[name] ?? [];
+    tables[name] = name === 'attachments' ? await Promise.all(rows.map(encodeRow)) : rows;
+    counts[name] = rows.length;
+  }
   return {
     createdAt: Date.now(),
     appVersion: APP_VERSION,
@@ -257,7 +294,8 @@ export async function restoreBackup(text: string, password: string): Promise<Bac
     async () => {
       for (const name of names) {
         await db.table(name).clear();
-        await db.table(name).bulkPut(payload.tables[name] ?? []);
+        const rows = payload.tables[name] ?? [];
+        await db.table(name).bulkPut(name === 'attachments' ? rows.map(decodeRow) : rows);
       }
       // El historial de cambios y la cola de sincronización pertenecen a los datos anteriores.
       await db.changeLog.clear();

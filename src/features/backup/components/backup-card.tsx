@@ -4,6 +4,7 @@ import { ConfirmButton } from '@/components/shared/confirm-button';
 import { Card, CardTitle } from '@/components/shared/page';
 import { Button } from '@/components/ui/button';
 import { Field, inputClass } from '@/components/ui/field';
+import { FilePicker } from '@/components/ui/file-picker';
 import { ENTITY_NAMES } from '@/db/repo';
 import { attempt } from '@/lib/actions';
 import { formatDateTime } from '@/lib/utils';
@@ -177,14 +178,13 @@ function RestoreSection() {
         Restaurar reemplaza los datos actuales de este dispositivo. Antes de confirmar verás qué
         contiene el respaldo. Si dudas, crea primero un respaldo de lo que tienes ahora.
       </p>
-      <Field label="Archivo de respaldo" htmlFor="restaurar-archivo">
-        <input
-          id="restaurar-archivo"
-          type="file"
-          className={inputClass + ' py-2 h-auto'}
-          onChange={(e) => void onFile(e.target.files?.[0])}
-        />
-      </Field>
+      <FilePicker
+        id="restaurar-archivo"
+        label="Elegir el archivo de respaldo"
+        accept=".json,application/json"
+        fileName={fileName}
+        onFile={(files) => void onFile(files[0])}
+      />
 
       {text && !summary && (
         <form onSubmit={review} className="space-y-3">

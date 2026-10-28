@@ -113,6 +113,17 @@ Pantalla `/sincronizacion` (también desde el indicador de estado de la barra su
 
 Sin la clave, la app sigue funcionando y la pantalla lo explica.
 
+## Fotos de la reunión
+
+En la ficha de cada reunión (y en el modo reunión) hay un bloque de fotos: **Tomar foto** abre la cámara del teléfono y
+**Elegir de la galería** permite varias a la vez.
+
+- Se reducen a 1920 px de lado largo en JPEG antes de guardarse (una foto de 5 MB queda en unos 300 a 600 KB). Si la
+  reducción falla, se guarda la original: una foto nunca se pierde por eso.
+- Se guardan solo en este dispositivo (IndexedDB) y entran dentro del respaldo cifrado. Todavía no se sincronizan.
+- Eliminar una foto la manda a la papelera 30 días.
+- Idea para sincronizarlas más adelante sin tarjeta: guardarlas ya reducidas en D1. Si algún día pesan demasiado, R2.
+
 ## Estructura
 
 ```text
@@ -204,4 +215,3 @@ El mensaje de WhatsApp es un borrador editable que se copia; la aplicación no e
 4. Autenticación y sincronización (Workers, Hono, D1, Drizzle, Better Auth).
 5. Adjuntos, papelera visible, versiones e informes.
 6. Validación final.
-hey

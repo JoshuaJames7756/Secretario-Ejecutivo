@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { BookOpen, CircleAlert, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { ConfirmButton } from '@/components/shared/confirm-button';
 import { EmptyState, PageHeader } from '@/components/shared/page';
 import { Button } from '@/components/ui/button';
 import { Field, inputClass } from '@/components/ui/field';
@@ -10,7 +11,7 @@ import { isActive } from '@/db/repo';
 import type { MeetingTemplate } from '@/db/types';
 import { TEMPLATE_CATEGORY_ORDER } from '@/features/templates/catalog';
 import { TemplateBadges } from '@/features/templates/components/template-badges';
-import { createBlankTemplate } from '@/features/templates/service';
+import { createBlankTemplate, markAllReferencesReviewed } from '@/features/templates/service';
 import { attempt } from '@/lib/actions';
 
 function groupByCategory(templates: MeetingTemplate[]): [string, MeetingTemplate[]][] {
@@ -95,12 +96,25 @@ export default function PlantillasPage() {
           className="mb-5 flex gap-3 rounded-card border border-border bg-warning-soft p-4 text-warning"
         >
           <CircleAlert className="mt-0.5 size-5 shrink-0" aria-hidden />
-          <p className="text-sm">
-            <strong>{unverified} referencias del Manual por verificar.</strong> Los nombres, las
-            secciones y las frecuencias se extrajeron de los capítulos 6 y 29 de forma automática.
-            Compáralos con el texto oficial y márcalos como verificados desde el detalle de cada
-            plantilla.
-          </p>
+          <div className="min-w-0 space-y-3">
+            <p className="text-sm">
+              <strong>{unverified} referencias del Manual por verificar.</strong> Los nombres, las
+              secciones y las frecuencias se extrajeron de los capítulos 6 y 29 de forma automática.
+              Compáralos con el texto oficial y márcalos como verificados desde el detalle de cada
+              plantilla. Si ya las comparaste todas con el Manual, puedes confirmarlo de una vez.
+            </p>
+            <ConfirmButton
+              size="default"
+              confirmLabel="Sí, todas coinciden con el Manual"
+              onConfirm={async () => {
+                await attempt(() => markAllReferencesReviewed(), {
+                  success: 'Referencias marcadas como verificadas.',
+                });
+              }}
+            >
+              Ya las comparé todas: marcar como verificadas
+            </ConfirmButton>
+          </div>
         </div>
       )}
 

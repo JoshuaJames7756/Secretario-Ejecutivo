@@ -117,6 +117,22 @@ export async function markReferenceReviewed(id: Id, at = Date.now()): Promise<Me
   });
 }
 
+/**
+ * La persona confirma, de una sola vez, que comparó TODAS las referencias oficiales pendientes
+ * con el Manual. Solo marca las que siguen sin verificar y deja la fecha de la confirmación.
+ */
+export async function markAllReferencesReviewed(at = Date.now()): Promise<number> {
+  return runInTransaction(async () => {
+    const pending = await db.templates
+      .filter((t) => t.deletedAt === undefined && t.origin === 'oficial' && !t.lastReviewedAt)
+      .toArray();
+    for (const template of pending) {
+      await updateEntity('templates', template.id, { lastReviewedAt: at });
+    }
+    return pending.length;
+  });
+}
+
 export async function setTemplateStatus(id: Id, status: MeetingTemplate['status']) {
   return updateEntity('templates', id, { status });
 }

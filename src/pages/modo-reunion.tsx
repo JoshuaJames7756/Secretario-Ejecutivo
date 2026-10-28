@@ -9,6 +9,7 @@ import { textareaClass } from '@/components/ui/field';
 import { db } from '@/db/database';
 import type { AgendaItem, MeetingOccurrence } from '@/db/types';
 import { NoteEditor } from '@/features/meetings/components/note-editor';
+import { PhotosPanel } from '@/features/attachments/components/photos-panel';
 import { RecordForm } from '@/features/meetings/components/record-form';
 import { RecordList } from '@/features/meetings/components/record-list';
 import {
@@ -263,6 +264,11 @@ export default function ModoReunionPage() {
         <Card>
           <CardTitle>Registrar</CardTitle>
           <RecordForm meetingId={meeting.id} agenda={agenda} currentItemId={current?.id} />
+        </Card>
+
+        <Card>
+          <CardTitle>Fotos (pizarra, documentos)</CardTitle>
+          <PhotosPanel meetingId={meeting.id} agendaItemId={current?.id} />
         </Card>
 
         <Card>

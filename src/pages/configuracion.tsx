@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, Monitor, Moon, ShieldAlert, ShieldCheck, Sun, type LucideIcon } from 'lucide-react';
+import { Monitor, Moon, ShieldAlert, ShieldCheck, Sun, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardTitle, PageHeader, PhaseTag } from '@/components/shared/page';
 import { Button } from '@/components/ui/button';
@@ -14,11 +14,50 @@ import { APP_PHASE, APP_VERSION } from '@/lib/constants';
 import { formatBytes } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 
-const THEMES: { value: ThemePreference; label: string; icon: LucideIcon }[] = [
-  { value: 'system', label: 'Automático', icon: Monitor },
-  { value: 'light', label: 'Claro', icon: Sun },
-  { value: 'dark', label: 'Oscuro', icon: Moon },
+const THEMES: { value: ThemePreference; label: string; icon: LucideIcon; hint: string }[] = [
+  { value: 'system', label: 'Automático', icon: Monitor, hint: 'Sigue al teléfono' },
+  { value: 'light', label: 'Claro', icon: Sun, hint: 'Fondo blanco' },
+  { value: 'dark', label: 'Oscuro', icon: Moon, hint: 'Fondo oscuro' },
 ];
+
+const PREVIEW_LIGHT = { bg: '#f6f7fb', bar: '#12296b', line: '#c9d0e4' };
+const PREVIEW_DARK = { bg: '#0a0f1f', bar: '#7da2ff', line: '#2a3558' };
+
+function MiniScreen({ colors }: { colors: typeof PREVIEW_LIGHT }) {
+  return (
+    <span className="flex h-full w-full flex-col gap-1 p-1.5" style={{ background: colors.bg }}>
+      <span className="h-1.5 w-1/2 rounded-full" style={{ background: colors.bar }} />
+      <span className="h-1 w-full rounded-full" style={{ background: colors.line }} />
+      <span className="h-1 w-3/4 rounded-full" style={{ background: colors.line }} />
+    </span>
+  );
+}
+
+/** Vista previa dibujada con CSS: se entiende el tema sin leer. Colores fijos a propósito. */
+function ThemePreview({ value }: { value: ThemePreference }) {
+  return (
+    <span
+      aria-hidden
+      className="relative block h-14 w-full overflow-hidden rounded-lg border border-border"
+    >
+      {value === 'system' ? (
+        <>
+          <span className="absolute inset-0">
+            <MiniScreen colors={PREVIEW_LIGHT} />
+          </span>
+          <span
+            className="absolute inset-0"
+            style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }}
+          >
+            <MiniScreen colors={PREVIEW_DARK} />
+          </span>
+        </>
+      ) : (
+        <MiniScreen colors={value === 'light' ? PREVIEW_LIGHT : PREVIEW_DARK} />
+      )}
+    </span>
+  );
+}
 
 function ThemeCard() {
   const { preference, setPreference } = useTheme();
@@ -27,8 +66,8 @@ function ThemeCard() {
       <CardTitle>
         <span id="tema">Tema</span>
       </CardTitle>
-      <div role="radiogroup" aria-labelledby="tema" className="grid grid-cols-3 gap-2">
-        {THEMES.map(({ value, label, icon: Icon }) => {
+      <div role="radiogroup" aria-labelledby="tema" className="grid grid-cols-3 gap-2.5">
+        {THEMES.map(({ value, label, icon: Icon, hint }) => {
           const selected = preference === value;
           return (
             <button
@@ -38,17 +77,36 @@ function ThemeCard() {
               aria-checked={selected}
               onClick={() => setPreference(value)}
               className={cn(
-                'flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border px-2 text-sm font-medium transition-colors',
+                'group flex flex-col gap-2 rounded-xl border-2 p-2 text-left transition-all',
                 selected
-                  ? 'border-primary bg-primary-soft text-primary-soft-fg'
-                  : 'border-border-strong bg-surface text-fg hover:bg-surface-2',
+                  ? 'border-primary bg-primary-soft shadow-sm'
+                  : 'border-border bg-surface hover:border-border-strong hover:bg-surface-2',
               )}
             >
-              <span className="flex items-center gap-1.5">
-                <Icon className="size-4" aria-hidden />
-                {label}
+              <ThemePreview value={value} />
+              <span className="flex items-center justify-between gap-1 px-0.5">
+                <span className="min-w-0">
+                  <span
+                    className={cn(
+                      'flex items-center gap-1.5 text-sm',
+                      selected ? 'font-semibold text-primary-soft-fg' : 'font-medium',
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" aria-hidden />
+                    {label}
+                  </span>
+                  <span className="hidden text-xs text-muted sm:block">{hint}</span>
+                </span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    'grid size-4 shrink-0 place-items-center rounded-full border-2',
+                    selected ? 'border-primary' : 'border-border-strong',
+                  )}
+                >
+                  {selected && <span className="size-2 rounded-full bg-primary" />}
+                </span>
               </span>
-              {selected && <Check className="size-3.5" aria-label="Seleccionado" />}
             </button>
           );
         })}

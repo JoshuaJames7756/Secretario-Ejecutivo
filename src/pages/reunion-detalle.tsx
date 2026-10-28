@@ -12,6 +12,7 @@ import { Field, describedBy, inputClass, textareaClass } from '@/components/ui/f
 import { db } from '@/db/database';
 import { softDeleteEntity } from '@/db/repo';
 import type { MeetingOccurrence, MeetingStatus } from '@/db/types';
+import { PhotosPanel } from '@/features/attachments/components/photos-panel';
 import { AgendaEditor } from '@/features/meetings/components/agenda-editor';
 import { SuggestionsCard } from '@/features/meetings/components/suggestions-card';
 import { RecordList } from '@/features/meetings/components/record-list';
@@ -234,6 +235,11 @@ export default function ReunionDetallePage() {
         <Card>
           <CardTitle>Decisiones, asignaciones y notas</CardTitle>
           <RecordList meetingId={meeting.id} editable={meeting.status === 'en_curso'} />
+        </Card>
+
+        <Card>
+          <CardTitle>Fotos y archivos</CardTitle>
+          <PhotosPanel meetingId={meeting.id} />
         </Card>
 
         <Card>
