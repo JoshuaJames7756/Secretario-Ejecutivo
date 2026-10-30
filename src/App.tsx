@@ -15,6 +15,7 @@ import EntrevistaDetallePage from '@/pages/entrevista-detalle';
 import EntrevistaNuevaPage from '@/pages/entrevista-nueva';
 import EntrevistasConfiguracionPage from '@/pages/entrevistas-configuracion';
 import EntrevistasPage from '@/pages/entrevistas';
+import EntrevistasResumenPage from '@/pages/entrevistas-resumen';
 import HistorialPage from '@/pages/historial';
 import MasPage from '@/pages/mas';
 import ModoReunionPage from '@/pages/modo-reunion';
@@ -57,6 +58,7 @@ export default function App() {
               <Route path="reuniones/:id/modo-reunion" element={<ModoReunionPage />} />
               <Route path="entrevistas" element={<EntrevistasPage />} />
               <Route path="entrevistas/nueva" element={<EntrevistaNuevaPage />} />
+              <Route path="entrevistas/resumen" element={<EntrevistasResumenPage />} />
               <Route path="entrevistas/configuracion" element={<EntrevistasConfiguracionPage />} />
               <Route path="entrevistas/:id" element={<EntrevistaDetallePage />} />
               <Route path="seguimientos" element={<SeguimientosPage />} />

@@ -8,7 +8,6 @@ import {
   NotebookPen,
   Paperclip,
   ShieldCheck,
-  UserPlus,
 } from 'lucide-react';
 import { useMemo, type ComponentType } from 'react';
 import { Link } from 'react-router';
@@ -16,6 +15,7 @@ import { Card, CardTitle, EmptyState, PageHeader, PhaseTag } from '@/components/
 import { buttonVariants } from '@/components/ui/button';
 import { db } from '@/db/database';
 import { SETTING_KEYS } from '@/db/settings';
+import { InterviewsHomeCard } from '@/features/interviews/components/home-card';
 import { useStorageStatus } from '@/hooks/use-storage-status';
 import { cn, formatDateLong, formatDateTime, greeting } from '@/lib/utils';
 
@@ -37,7 +37,6 @@ const QUICK_ACTIONS: QuickAction[] = [
   { label: 'Registrar nota', icon: NotebookPen, needsActiveMeeting: true },
   { label: 'Crear asunto pendiente', icon: ListPlus, to: '/seguimientos' },
   { label: 'Registrar asignación', icon: CalendarPlus, to: '/seguimientos' },
-  { label: 'Programar entrevista', icon: UserPlus, to: '/entrevistas/nueva' },
   { label: 'Adjuntar documento', icon: Paperclip, phase: 5 },
 ];
 
@@ -110,6 +109,8 @@ export default function InicioPage() {
               </Link>
             </Card>
           )}
+
+          <InterviewsHomeCard />
 
           <Card aria-labelledby="proxima-reunion">
             <CardTitle>

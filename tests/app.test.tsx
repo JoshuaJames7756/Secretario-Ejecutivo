@@ -60,7 +60,8 @@ describe('aplicación', () => {
     const attach = screen.getByRole('button', { name: /Adjuntar documento/ });
     expect((attach as HTMLButtonElement).disabled).toBe(true);
     expect(within(attach).getByText('Fase 5')).toBeTruthy();
-    expect(screen.getByRole('link', { name: /Programar entrevista/ }).getAttribute('href')).toBe(
+    // Las entrevistas son la prioridad: tienen su tarjeta propia en Inicio.
+    expect(screen.getAllByRole('link', { name: /Nueva entrevista/ })[0]?.getAttribute('href')).toBe(
       '/entrevistas/nueva',
     );
     expect(screen.getByRole('link', { name: /Abrir el calendario/ }).getAttribute('href')).toBe(

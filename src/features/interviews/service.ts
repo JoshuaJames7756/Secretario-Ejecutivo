@@ -11,13 +11,24 @@ import {
 import type {
   Id,
   InterviewAppointment,
+  InterviewKind,
   InterviewRequest,
   Leader,
   LeaderAvailability,
   Organization,
 } from '@/db/types';
 import { ValidationError } from '@/features/followups/service';
-import { LEADER_LABEL, checkSlot, type SlotIssue } from './model';
+import { getSetting, setSetting } from '@/db/settings';
+import {
+  DEFAULT_DURATION_MIN,
+  KIND_INFO,
+  LEADER_LABEL,
+  PRESIDENCY_SETTING_KEY,
+  normalizePhone,
+  checkSlot,
+  type PresidencyNames,
+  type SlotIssue,
+} from './model';
 
 export { ValidationError };
 
@@ -50,6 +61,20 @@ export async function createOrganization(input: {
     status: 'activa',
     assignedLeader: input.assignedLeader,
   });
+}
+
+/** Apellidos de la presidencia de estaca (se muestran en la imagen y en los mensajes). */
+export async function getPresidencyNames(): Promise<PresidencyNames> {
+  return (await getSetting<PresidencyNames>(PRESIDENCY_SETTING_KEY)) ?? {};
+}
+
+export async function setPresidencyName(leader: Leader, surname: string): Promise<void> {
+  const current = await getPresidencyNames();
+  const clean = surname.trim().slice(0, 40);
+  const next = { ...current };
+  if (clean) next[leader] = clean;
+  else delete next[leader];
+  await setSetting(PRESIDENCY_SETTING_KEY, next);
 }
 
 export function setOrganizationLeader(id: Id, assignedLeader?: Leader): Promise<Organization> {
@@ -102,54 +127,57 @@ export async function removeAvailability(id: Id): Promise<void> {
 
 export interface NewRequestInput {
   personName: string;
+  treatment?: 'hermano' | 'hermana';
+  kind?: InterviewKind;
+  kindDetail?: string;
+  modality?: 'presencial' | 'virtual';
+  phone?: string;
   organizationId?: Id;
-  requestedBy?: string;
-  receivedAt?: number;
   requestedLeader?: Leader;
-  mustBeWithPresident?: boolean;
-  timePreferences?: string;
   notes?: string;
 }
 
-/** Solo datos administrativos. Nunca el motivo ni el contenido de la entrevista. */
+/** Solo datos administrativos. Nunca el motivo detallado ni el contenido de la entrevista. */
 export async function createRequest(input: NewRequestInput): Promise<InterviewRequest> {
   const personName = input.personName.trim();
   if (!personName) throw new ValidationError('Escribe el nombre de la persona.');
+  const kind = input.kind ?? 'otro';
+  const mustBeWithPresident = KIND_INFO[kind].rule === 'obligatorio';
+  const phone = normalizePhone(input.phone);
+  if (phone === null) throw new ValidationError('El número de WhatsApp no parece válido.');
   return createEntity('interviewRequests', {
     personName,
+    treatment: input.treatment ?? 'hermano',
+    kind,
+    kindDetail: kind === 'llamamiento' ? input.kindDetail?.trim() || undefined : undefined,
+    modality: input.modality ?? 'presencial',
+    phone,
     organizationId: input.organizationId || undefined,
-    requestedBy: input.requestedBy?.trim() || undefined,
-    receivedAt: input.receivedAt ?? Date.now(),
-    requestedLeader: input.mustBeWithPresident ? 'presidente' : input.requestedLeader || undefined,
-    mustBeWithPresident: input.mustBeWithPresident ?? false,
-    timePreferences: input.timePreferences?.trim() || undefined,
+    receivedAt: Date.now(),
+    requestedLeader: mustBeWithPresident ? 'presidente' : input.requestedLeader || undefined,
+    mustBeWithPresident,
     status: 'recibida',
     notes: input.notes?.trim() || undefined,
   });
 }
 
-export function updateRequest(
-  id: Id,
-  patch: Pick<
-    NewRequestInput,
-    | 'personName'
-    | 'organizationId'
-    | 'requestedBy'
-    | 'requestedLeader'
-    | 'mustBeWithPresident'
-    | 'timePreferences'
-    | 'notes'
-  >,
-): Promise<InterviewRequest> {
+export function updateRequest(id: Id, patch: NewRequestInput): Promise<InterviewRequest> {
   const personName = patch.personName.trim();
   if (!personName) throw new ValidationError('Escribe el nombre de la persona.');
+  const kind = patch.kind ?? 'otro';
+  const mustBeWithPresident = KIND_INFO[kind].rule === 'obligatorio';
+  const phone = normalizePhone(patch.phone);
+  if (phone === null) throw new ValidationError('El número de WhatsApp no parece válido.');
   return updateEntity('interviewRequests', id, {
     personName,
+    treatment: patch.treatment ?? 'hermano',
+    kind,
+    kindDetail: kind === 'llamamiento' ? patch.kindDetail?.trim() || undefined : undefined,
+    modality: patch.modality ?? 'presencial',
+    phone,
     organizationId: patch.organizationId || undefined,
-    requestedBy: patch.requestedBy?.trim() || undefined,
-    requestedLeader: patch.mustBeWithPresident ? 'presidente' : patch.requestedLeader || undefined,
-    mustBeWithPresident: patch.mustBeWithPresident ?? false,
-    timePreferences: patch.timePreferences?.trim() || undefined,
+    requestedLeader: mustBeWithPresident ? 'presidente' : patch.requestedLeader || undefined,
+    mustBeWithPresident,
     notes: patch.notes?.trim() || undefined,
   });
 }
@@ -174,16 +202,14 @@ export interface ScheduleInput {
   requestId: Id;
   leader: Leader;
   startsAt: number;
-  durationMin: number;
-  /** Anula avisos de disponibilidad. Nunca anula un choque con otra cita. */
-  overrideAvailability?: boolean;
+  /** Día especial: fuera del horario habitual de entrevistas. No exige disponibilidad. */
+  special?: boolean;
+  /** El presidente autorizó que un consejero haga una entrevista que le corresponde a él. */
+  presidentAuthorized?: boolean;
 }
 
 async function verifySlot(input: ScheduleInput, ignoreAppointmentId?: Id): Promise<void> {
   if (!Number.isFinite(input.startsAt)) throw new ValidationError('Indica la fecha y la hora.');
-  if (!(input.durationMin >= 5 && input.durationMin <= 240)) {
-    throw new ValidationError('La duración debe estar entre 5 y 240 minutos.');
-  }
   const [rules, appointments] = await Promise.all([
     db.leaderAvailability.where('leader').equals(input.leader).filter(isActive).toArray(),
     db.interviewAppointments
@@ -195,18 +221,29 @@ async function verifySlot(input: ScheduleInput, ignoreAppointmentId?: Id): Promi
   const issues = checkSlot({
     leader: input.leader,
     startsAt: input.startsAt,
-    durationMin: input.durationMin,
     rules,
     appointments,
     ignoreAppointmentId,
   });
-  const blocking = issues.filter((i) => !i.overridable || !input.overrideAvailability);
+  const blocking = issues.filter((i) => !i.overridable || !input.special);
   if (blocking.length > 0) throw new SlotUnavailableError(issues);
 }
 
+function assertLeaderAllowed(
+  request: Pick<InterviewRequest, 'mustBeWithPresident' | 'kind'>,
+  leader: Leader,
+  presidentAuthorized?: boolean,
+): void {
+  if (request.mustBeWithPresident && leader !== 'presidente' && !presidentAuthorized) {
+    throw new ValidationError(
+      `${KIND_INFO[request.kind ?? 'otro'].label}: la realiza el presidente de estaca. Si él autorizó a un consejero por urgencia, márcalo.`,
+    );
+  }
+}
+
 /**
- * Programa una cita. La comprobación de conflictos y el guardado ocurren en la misma
- * transacción, así dos citas simultáneas con el mismo líder no pueden coexistir.
+ * Programa una cita. La comprobación del bloque y el guardado ocurren en la misma transacción,
+ * así nunca se superan las 3 entrevistas por bloque de media hora.
  */
 export async function scheduleAppointment(input: ScheduleInput): Promise<InterviewAppointment> {
   return runInTransaction(async () => {
@@ -214,26 +251,55 @@ export async function scheduleAppointment(input: ScheduleInput): Promise<Intervi
     if (!['recibida', 'pendiente_coordinacion', 'reprogramada'].includes(request.status)) {
       throw new ValidationError('Esta solicitud ya tiene una cita o fue cerrada.');
     }
-    if (request.mustBeWithPresident && input.leader !== 'presidente') {
-      throw new ValidationError('Esta entrevista debe ser con el presidente de estaca.');
-    }
+    assertLeaderAllowed(request, input.leader, input.presidentAuthorized);
     await verifySlot(input);
     const appointment = await createEntity('interviewAppointments', {
       requestId: request.id,
       leader: input.leader,
       startsAt: input.startsAt,
-      durationMin: input.durationMin,
+      durationMin: DEFAULT_DURATION_MIN,
       status: 'programada',
+      confirmed: false,
+      special: input.special ?? false,
     });
     await updateEntity('interviewRequests', request.id, { status: 'programada', waitlist: false });
+    await setSetting(LAST_TIME_KEY, timeOfDay(input.startsAt));
     return appointment;
+  });
+}
+
+export const LAST_TIME_KEY = 'interviews.lastTime';
+
+function timeOfDay(epochMs: number): string {
+  const d = new Date(epochMs);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** Marca que ya se le mandó el mensaje a esta persona (para pasar a recordatorio). */
+export async function markContacted(appointmentId: Id): Promise<InterviewAppointment> {
+  const appointment = await activeAppointment(appointmentId);
+  if (appointment.status !== 'programada') {
+    throw new ValidationError('Solo una cita programada se puede avisar.');
+  }
+  return updateEntity('interviewAppointments', appointmentId, { contactedAt: Date.now() });
+}
+
+/** Registra la persona y la agenda en un solo paso (todo o nada). */
+export async function createAndSchedule(
+  request: NewRequestInput,
+  slot: Omit<ScheduleInput, 'requestId'>,
+): Promise<{ request: InterviewRequest; appointment: InterviewAppointment }> {
+  return runInTransaction(async () => {
+    const created = await createRequest(request);
+    const appointment = await scheduleAppointment({ ...slot, requestId: created.id });
+    return { request: created, appointment };
   });
 }
 
 /** Mueve la cita. La anterior queda como «reprogramada» para conservar el historial. */
 export async function rescheduleAppointment(
   appointmentId: Id,
-  next: { leader: Leader; startsAt: number; durationMin: number; overrideAvailability?: boolean },
+  next: Omit<ScheduleInput, 'requestId'>,
 ): Promise<InterviewAppointment> {
   return runInTransaction(async () => {
     const current = await activeAppointment(appointmentId);
@@ -241,19 +307,31 @@ export async function rescheduleAppointment(
       throw new ValidationError('Solo se puede reprogramar una cita programada.');
     }
     const request = await activeRequest(current.requestId);
-    if (request.mustBeWithPresident && next.leader !== 'presidente') {
-      throw new ValidationError('Esta entrevista debe ser con el presidente de estaca.');
-    }
+    assertLeaderAllowed(request, next.leader, next.presidentAuthorized);
     await verifySlot({ requestId: request.id, ...next }, current.id);
     await updateEntity('interviewAppointments', current.id, { status: 'reprogramada' });
     return createEntity('interviewAppointments', {
       requestId: request.id,
       leader: next.leader,
       startsAt: next.startsAt,
-      durationMin: next.durationMin,
+      durationMin: DEFAULT_DURATION_MIN,
       status: 'programada',
+      confirmed: false,
+      special: next.special ?? false,
     });
   });
+}
+
+/** Marca si la persona confirmó que asistirá. */
+export async function setConfirmed(
+  appointmentId: Id,
+  confirmed: boolean,
+): Promise<InterviewAppointment> {
+  const appointment = await activeAppointment(appointmentId);
+  if (appointment.status !== 'programada') {
+    throw new ValidationError('Solo una cita programada se puede confirmar.');
+  }
+  return updateEntity('interviewAppointments', appointmentId, { confirmed });
 }
 
 export async function completeAppointment(appointmentId: Id): Promise<void> {

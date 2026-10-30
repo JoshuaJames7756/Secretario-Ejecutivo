@@ -215,3 +215,24 @@ El mensaje de WhatsApp es un borrador editable que se copia; la aplicación no e
 4. Autenticación y sincronización (Workers, Hono, D1, Drizzle, Better Auth).
 5. Adjuntos, papelera visible, versiones e informes.
 6. Validación final.
+
+## Entrevistas (flujo de trabajo real)
+
+- **Motivo** de cada entrevista con la regla del Manual General: investidura y misión las hace el presidente de estaca (un consejero solo con autorización por urgencia); renovación de recomendación, llamamiento, Sacerdocio de Melquisedec, BYU Pathway y personal pueden hacerlas los consejeros; dignidad se sugiere con el presidente. **Obrera u obrero del templo está por verificar** (Manual 25.5, no comprobado).
+- **Bloques**: hasta 3 entrevistas por líder en cada media hora; la hora exacta es libre (8:10, 8:15, 8:45). La duración ya no se muestra.
+- **Día especial** para entrevistas fuera del horario habitual.
+- **Confirmada / sin confirmar** en cada entrevista (se reinicia al reprogramar).
+- **Resumen para el grupo**: imagen PNG dibujada en el teléfono (hora, nombre, barrio, motivo, quién entrevista, confirmación). Se comparte con el menú del teléfono (Web Share), se copia o se descarga.
+- **Presidencia**: apellidos editables y barrios agrupados por quien los atiende; al elegir el barrio se asigna el líder solo. Los apellidos se guardan en este dispositivo (no se sincronizan).
+
+### Segunda ronda de mejoras
+
+- **WhatsApp con un toque**: si guardas el número de la persona (opcional, 8 dígitos se toman como de Bolivia), "Enviar mensaje" abre el chat con el texto escrito. Sin número, copia el texto. Después de avisar, el botón pasa a "Enviar recordatorio" hasta que la persona confirme. Se marca "Avisada" en la lista.
+- **Agendar otra igual**: copia motivo, barrio, líder, modalidad y día (no la persona).
+- **Atajos de día y hora**: Hoy, Mañana, próximos jueves y "Como la última vez".
+- **Resumen de 7 días** además del de un día, en imagen y en texto.
+- **Filtro por líder** con contador, y colores por líder en la lista y en la imagen.
+- **Lista de espera** muestra el primer cupo libre del líder sugerido.
+- **Deslizar a la derecha** una entrevista la confirma; el botón sigue ahí.
+- **Botón flotante "+"** en Entrevistas (teléfono).
+- **Seguridad**: la política CSP ahora se aplica (`public/_headers`). Permite Clerk en `*.clerk.accounts.dev`. Si algún día usas claves de producción de Clerk con dominio propio, agrega ese dominio a `script-src` y `connect-src`. Si el inicio de sesión dejara de abrir, vuelve a `Content-Security-Policy-Report-Only` en esa misma línea y publica de nuevo.

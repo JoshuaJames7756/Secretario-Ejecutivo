@@ -18,17 +18,36 @@ export interface NavItem {
   icon: LucideIcon;
   /** Aparece directamente en la barra inferior; el resto queda bajo "Más". */
   primaryOnMobile: boolean;
+  /** Sección de la barra lateral: lo diario arriba, la consulta y el sistema debajo. */
+  group: 'diario' | 'consulta' | 'sistema';
 }
 
-/** Las 8 áreas de la especificación (sección 3), en el orden indicado. */
+export const NAV_GROUP_LABEL: Record<NavItem['group'], string> = {
+  diario: 'Cada semana',
+  consulta: 'Consulta',
+  sistema: 'Sistema',
+};
+
+/**
+ * Las 8 áreas de la especificación. Las entrevistas son la prioridad diaria, así que van
+ * primero después de Inicio y tienen su lugar en la barra inferior del teléfono.
+ */
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Inicio', shortLabel: 'Inicio', icon: House, primaryOnMobile: true },
   {
-    to: '/calendario',
-    label: 'Calendario',
-    shortLabel: 'Calendario',
-    icon: CalendarDays,
+    to: '/',
+    label: 'Inicio',
+    shortLabel: 'Inicio',
+    icon: House,
     primaryOnMobile: true,
+    group: 'diario',
+  },
+  {
+    to: '/entrevistas',
+    label: 'Entrevistas',
+    shortLabel: 'Entrevistas',
+    icon: ClipboardList,
+    primaryOnMobile: true,
+    group: 'diario',
   },
   {
     to: '/reuniones',
@@ -36,13 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
     shortLabel: 'Reuniones',
     icon: Users,
     primaryOnMobile: true,
-  },
-  {
-    to: '/entrevistas',
-    label: 'Entrevistas',
-    shortLabel: 'Entrevistas',
-    icon: ClipboardList,
-    primaryOnMobile: false,
+    group: 'diario',
   },
   {
     to: '/seguimientos',
@@ -50,6 +63,15 @@ export const NAV_ITEMS: NavItem[] = [
     shortLabel: 'Pendientes',
     icon: ListChecks,
     primaryOnMobile: true,
+    group: 'diario',
+  },
+  {
+    to: '/calendario',
+    label: 'Calendario',
+    shortLabel: 'Calendario',
+    icon: CalendarDays,
+    primaryOnMobile: false,
+    group: 'diario',
   },
   {
     to: '/plantillas',
@@ -57,6 +79,7 @@ export const NAV_ITEMS: NavItem[] = [
     shortLabel: 'Plantillas',
     icon: BookOpen,
     primaryOnMobile: false,
+    group: 'consulta',
   },
   {
     to: '/historial',
@@ -64,6 +87,7 @@ export const NAV_ITEMS: NavItem[] = [
     shortLabel: 'Historial',
     icon: Search,
     primaryOnMobile: false,
+    group: 'consulta',
   },
   {
     to: '/configuracion',
@@ -71,6 +95,7 @@ export const NAV_ITEMS: NavItem[] = [
     shortLabel: 'Ajustes',
     icon: Settings,
     primaryOnMobile: false,
+    group: 'sistema',
   },
 ];
 

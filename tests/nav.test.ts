@@ -5,10 +5,10 @@ describe('navegación', () => {
   it('contiene las 8 áreas de la especificación', () => {
     expect(NAV_ITEMS.map((i) => i.label)).toEqual([
       'Inicio',
-      'Calendario',
-      'Reuniones',
       'Entrevistas',
+      'Reuniones',
       'Seguimientos',
+      'Calendario',
       'Plantillas y Manual',
       'Historial y búsqueda',
       'Configuración y respaldos',
@@ -19,6 +19,10 @@ describe('navegación', () => {
     const routes = NAV_ITEMS.map((i) => i.to);
     expect(new Set(routes).size).toBe(routes.length);
     expect(routes).not.toContain(MORE_ROUTE);
+  });
+
+  it('Entrevistas está en la barra inferior del teléfono', () => {
+    expect(MOBILE_PRIMARY.map((i) => i.to)).toContain('/entrevistas');
   });
 
   it('la barra inferior del teléfono tiene como máximo 5 destinos incluyendo "Más"', () => {

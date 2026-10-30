@@ -1,5 +1,6 @@
 import type {
   InterviewAppointment,
+  InterviewKind,
   InterviewRequest,
   InterviewRequestStatus,
   Leader,
@@ -49,6 +50,147 @@ export function isRequestOpen(status: InterviewRequestStatus): boolean {
   return status === 'recibida' || status === 'pendiente_coordinacion' || status === 'programada';
 }
 
+/* ---------- Motivo de la entrevista y quién la realiza ---------- */
+
+/**
+ * - obligatorio: según el Manual la realiza el presidente de estaca; un consejero solo en un caso
+ *   urgente que el presidente autorice.
+ * - sugerido: lo habitual es el presidente, pero el Manual no lo exige.
+ * - libre: puede realizarla un consejero asignado.
+ */
+export type LeaderRule = 'obligatorio' | 'sugerido' | 'libre';
+
+export interface KindInfo {
+  label: string;
+  rule: LeaderRule;
+  /** Sección del Manual General de 2020 que respalda la regla. */
+  manualRef?: string;
+  /** Texto corto para explicar la regla en pantalla. */
+  note: string;
+  /** La regla no se pudo comprobar en el Manual; Joshua debe confirmarla. */
+  toVerify?: boolean;
+}
+
+export const KIND_ORDER: InterviewKind[] = [
+  'renovacion_recomendacion',
+  'investidura',
+  'obrero_templo',
+  'llamamiento',
+  'melquisedec',
+  'pathway',
+  'mision',
+  'dignidad',
+  'personal',
+  'otro',
+];
+
+export const KIND_INFO: Record<InterviewKind, KindInfo> = {
+  renovacion_recomendacion: {
+    label: 'Renovación de recomendación',
+    rule: 'libre',
+    manualRef: '26.3.2 y 31.1.4',
+    note: 'Puede realizarla un consejero de la presidencia de estaca.',
+  },
+  investidura: {
+    label: 'Investidura',
+    rule: 'obligatorio',
+    manualRef: '26.3.3 y 31.1.3',
+    note: 'La realiza el presidente de estaca. Un consejero solo en un caso urgente que él autorice.',
+  },
+  obrero_templo: {
+    label: 'Obrera u obrero del templo',
+    rule: 'libre',
+    manualRef: '25.5',
+    note: 'No pude comprobar en el Manual quién la realiza. Confírmalo con el presidente.',
+    toVerify: true,
+  },
+  llamamiento: {
+    label: 'Llamamiento',
+    rule: 'libre',
+    manualRef: '30.8 y 31.1.4',
+    note: 'Puede realizarla un consejero. Los llamamientos de obispos, patriarcas y consejeros de estaca los hace el presidente.',
+  },
+  melquisedec: {
+    label: 'Sacerdocio de Melquisedec',
+    rule: 'libre',
+    manualRef: '38.2.5.1 y 31.1.4',
+    note: 'La ordenación a élder o sumo sacerdote puede entrevistarla un consejero.',
+  },
+  pathway: {
+    label: 'BYU Pathway',
+    rule: 'libre',
+    manualRef: '15.3 y 31.1.4',
+    note: 'La recomendación para una institución educativa de la Iglesia puede hacerla un consejero.',
+  },
+  mision: {
+    label: 'Misión',
+    rule: 'obligatorio',
+    manualRef: '24.4.2 y 31.1.3',
+    note: 'La realiza el presidente de estaca. Un consejero solo si él lo autoriza por urgencia.',
+  },
+  dignidad: {
+    label: 'Dignidad',
+    rule: 'sugerido',
+    manualRef: '31.1.3 y 31.1.6',
+    note: 'La ayuda para arrepentirse de pecados graves corresponde al presidente. Los consejeros pueden hacer entrevistas de dignidad en otros casos.',
+  },
+  personal: {
+    label: 'Personal',
+    rule: 'libre',
+    manualRef: '31.2.1',
+    note: 'El presidente puede delegarla en sus consejeros, salvo transgresiones graves.',
+  },
+  otro: {
+    label: 'Otro',
+    rule: 'libre',
+    note: 'Sin regla particular.',
+  },
+};
+
+export function kindOf(request: Pick<InterviewRequest, 'kind'>): InterviewKind {
+  return request.kind ?? 'otro';
+}
+
+/** Texto que ven los presidentes: «Llamamiento: Presidenta de la Primaria». */
+export function reasonLabel(request: Pick<InterviewRequest, 'kind' | 'kindDetail'>): string {
+  const base = KIND_INFO[kindOf(request)].label;
+  const detail = request.kindDetail?.trim();
+  return request.kind === 'llamamiento' && detail ? `${base}: ${detail}` : base;
+}
+
+/** Un color suave por líder para reconocerlos de un vistazo (lista e imagen). */
+export const LEADER_COLOR: Record<Leader, string> = {
+  presidente: '#12296b',
+  primer_consejero: '#0f766e',
+  segundo_consejero: '#7c3aed',
+};
+
+export const MODALITY_LABEL = { presencial: 'Presencial', virtual: 'Virtual' } as const;
+export const TREATMENT_LABEL = { hermano: 'Hermano', hermana: 'Hermana' } as const;
+
+/* ---------- Presidencia de estaca (apellidos editables) ---------- */
+
+export type PresidencyNames = Partial<Record<Leader, string>>;
+
+export const PRESIDENCY_SETTING_KEY = 'interviews.presidencyNames';
+
+/** «Presidente Rojas», o «Presidente de estaca» si todavía no se escribió el apellido. */
+export function leaderShort(leader: Leader, names: PresidencyNames = {}): string {
+  const surname = names[leader]?.trim();
+  const role =
+    leader === 'presidente'
+      ? 'Presidente'
+      : leader === 'primer_consejero'
+        ? '1.er consejero'
+        : '2.º consejero';
+  return surname ? `${role} ${surname}` : LEADER_LABEL[leader];
+}
+
+/** Solo el apellido (o el cargo si falta) para la imagen que se comparte. */
+export function leaderSurname(leader: Leader, names: PresidencyNames = {}): string {
+  return names[leader]?.trim() || LEADER_LABEL[leader];
+}
+
 /* ---------- Sugerencia de líder ---------- */
 
 export interface LeaderSuggestion {
@@ -57,20 +199,23 @@ export interface LeaderSuggestion {
 }
 
 /**
- * Con quién coordinar. Se SUGIERE, no se impone (salvo que deba ser con el presidente):
- * 1. Si debe ser con el presidente, se respeta siempre.
- * 2. Si la solicitud pide un líder concreto, ese.
- * 3. Si no, el consejero asignado al barrio o rama.
+ * Con quién coordinar. Se SUGIERE (salvo que el Manual exija al presidente):
+ * 1. Si el motivo lo exige o lo sugiere, el presidente.
+ * 2. Si no, el consejero asignado al barrio o rama.
  */
 export function suggestLeader(
-  request: Pick<InterviewRequest, 'mustBeWithPresident' | 'requestedLeader'>,
+  request: Pick<InterviewRequest, 'kind' | 'mustBeWithPresident' | 'requestedLeader'>,
   organization?: Pick<Organization, 'name' | 'assignedLeader'>,
 ): LeaderSuggestion {
-  if (request.mustBeWithPresident) {
-    return { leader: 'presidente', reason: 'La solicitud indica que debe ser con el presidente.' };
+  const info = KIND_INFO[kindOf(request)];
+  if (request.mustBeWithPresident || info.rule === 'obligatorio') {
+    return { leader: 'presidente', reason: `${info.label}: la realiza el presidente de estaca.` };
+  }
+  if (info.rule === 'sugerido') {
+    return { leader: 'presidente', reason: `${info.label}: lo habitual es el presidente.` };
   }
   if (request.requestedLeader) {
-    return { leader: request.requestedLeader, reason: 'Es el líder que pidió la solicitud.' };
+    return { leader: request.requestedLeader, reason: 'Elegido al registrar la solicitud.' };
   }
   if (organization?.assignedLeader) {
     return {
@@ -78,7 +223,7 @@ export function suggestLeader(
       reason: `Es el consejero asignado a ${organization.name}.`,
     };
   }
-  return { reason: 'No hay un consejero asignado a este barrio. Elige un líder.' };
+  return { reason: 'Este barrio no tiene consejero asignado. Elige quién lo entrevista.' };
 }
 
 /* ---------- Horarios ---------- */
@@ -144,73 +289,90 @@ function hasAnyAvailability(rules: LeaderAvailability[], leader: Leader): boolea
   );
 }
 
-export type SlotIssueKind =
-  'conflicto' | 'cruza_medianoche' | 'no_disponible' | 'fuera_de_disponibilidad';
+/** Las entrevistas se agendan por bloques de media hora; cada líder admite hasta 3 por bloque. */
+export const BLOCK_MIN = 30;
+export const MAX_PER_BLOCK = 3;
+/** Duración que se guarda internamente. No se muestra: las entrevistas se alargan. */
+export const DEFAULT_DURATION_MIN = 30;
+
+export type SlotIssueKind = 'bloque_lleno' | 'no_disponible' | 'fuera_de_disponibilidad';
 
 export interface SlotIssue {
   kind: SlotIssueKind;
   message: string;
-  /** Los conflictos con otra cita nunca se pueden anular. El resto, solo de forma expresa. */
+  /** Un bloque lleno nunca se supera. La disponibilidad se salta marcando «día especial». */
   overridable: boolean;
 }
 
 export interface SlotCheck {
   leader: Leader;
   startsAt: number;
-  durationMin: number;
   rules: LeaderAvailability[];
   appointments: InterviewAppointment[];
-  /** Al reprogramar, la cita que se mueve no debe chocar consigo misma. */
+  /** Al reprogramar, la cita que se mueve no se cuenta contra sí misma. */
   ignoreAppointmentId?: string;
 }
 
-const timeFmt = new Intl.DateTimeFormat('es-BO', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-});
+/** «8:30 pm»: como lo dice la gente al avisar la hora. */
+export function formatClock(epochMs: number): string {
+  const d = new Date(epochMs);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const suffix = h >= 12 ? 'pm' : 'am';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+/** Inicio (en ms) del bloque de media hora que contiene la hora indicada. */
+export function blockStart(epochMs: number): number {
+  const d = new Date(epochMs);
+  const minutes = d.getHours() * 60 + d.getMinutes();
+  const floored = Math.floor(minutes / BLOCK_MIN) * BLOCK_MIN;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, floored).getTime();
+}
+
+/** Citas programadas de un líder dentro del bloque que contiene `startsAt`. */
+export function appointmentsInBlock(
+  appointments: InterviewAppointment[],
+  leader: Leader,
+  startsAt: number,
+  ignoreId?: string,
+): InterviewAppointment[] {
+  const from = blockStart(startsAt);
+  const to = from + BLOCK_MIN * MS_MIN;
+  return appointments.filter(
+    (a) =>
+      a.leader === leader &&
+      a.deletedAt === undefined &&
+      a.status === 'programada' &&
+      a.id !== ignoreId &&
+      a.startsAt >= from &&
+      a.startsAt < to,
+  );
+}
 
 export function checkSlot(input: SlotCheck): SlotIssue[] {
   const issues: SlotIssue[] = [];
   const start = new Date(input.startsAt);
-  const end = new Date(input.startsAt + input.durationMin * MS_MIN);
   const s = minutesOfDay(start);
-  const e = s + input.durationMin;
 
-  if (
-    toDateString(start) !== toDateString(end) &&
-    !(end.getHours() === 0 && end.getMinutes() === 0)
-  ) {
-    issues.push({
-      kind: 'cruza_medianoche',
-      message: 'La cita no puede cruzar la medianoche.',
-      overridable: false,
-    });
-    return issues;
-  }
-
-  // Regla dura: nunca dos citas simultáneas con el mismo líder.
-  const clash = input.appointments.find(
-    (a) =>
-      a.leader === input.leader &&
-      a.deletedAt === undefined &&
-      a.status === 'programada' &&
-      a.id !== input.ignoreAppointmentId &&
-      a.startsAt < input.startsAt + input.durationMin * MS_MIN &&
-      input.startsAt < a.startsAt + a.durationMin * MS_MIN,
+  const inBlock = appointmentsInBlock(
+    input.appointments,
+    input.leader,
+    input.startsAt,
+    input.ignoreAppointmentId,
   );
-  if (clash) {
+  if (inBlock.length >= MAX_PER_BLOCK) {
+    const from = blockStart(input.startsAt);
     issues.push({
-      kind: 'conflicto',
-      message: `${LEADER_LABEL[input.leader]} ya tiene una cita de ${timeFmt.format(
-        new Date(clash.startsAt),
-      )} a ${timeFmt.format(new Date(clash.startsAt + clash.durationMin * MS_MIN))}.`,
+      kind: 'bloque_lleno',
+      message: `El bloque de ${formatClock(from)} a ${formatClock(from + BLOCK_MIN * MS_MIN)} de ${LEADER_LABEL[input.leader]} ya tiene ${MAX_PER_BLOCK} entrevistas.`,
       overridable: false,
     });
   }
 
   const day = rulesFor(input.rules, input.leader, start);
-  const blockedHit = day.some((r) => r.kind === 'no_disponible' && r.startMin < e && s < r.endMin);
+  const blockedHit = day.some((r) => r.kind === 'no_disponible' && r.startMin <= s && s < r.endMin);
   if (blockedHit) {
     issues.push({
       kind: 'no_disponible',
@@ -219,12 +381,12 @@ export function checkSlot(input: SlotCheck): SlotIssue[] {
     });
   } else if (hasAnyAvailability(input.rules, input.leader)) {
     const inside = freeWindows(input.rules, input.leader, start).some(
-      (w) => w.start <= s && e <= w.end,
+      (w) => w.start <= s && s < w.end,
     );
     if (!inside) {
       issues.push({
         kind: 'fuera_de_disponibilidad',
-        message: `Está fuera de la disponibilidad configurada para ${LEADER_LABEL[input.leader]}.`,
+        message: `No es un horario habitual de entrevistas de ${LEADER_LABEL[input.leader]}.`,
         overridable: true,
       });
     }
@@ -232,40 +394,61 @@ export function checkSlot(input: SlotCheck): SlotIssue[] {
   return issues;
 }
 
-/** Próximos horarios libres (sin conflictos) dentro de la disponibilidad configurada. */
-export function suggestSlots(input: {
+export interface BlockOption {
+  /** Inicio del bloque (ms). */
+  startsAt: number;
+  taken: number;
+  full: boolean;
+}
+
+/** Bloques de media hora de un día, dentro de la disponibilidad configurada. */
+export function blocksForDay(input: {
+  leader: Leader;
+  day: Date;
+  rules: LeaderAvailability[];
+  appointments: InterviewAppointment[];
+  ignoreAppointmentId?: string;
+}): BlockOption[] {
+  const { leader, day, rules, appointments } = input;
+  if (!hasAnyAvailability(rules, leader)) return [];
+  const out: BlockOption[] = [];
+  for (const w of freeWindows(rules, leader, day)) {
+    const begin = Math.floor(w.start / BLOCK_MIN) * BLOCK_MIN;
+    for (let m = begin; m < w.end; m += BLOCK_MIN) {
+      const startsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, m).getTime();
+      const taken = appointmentsInBlock(
+        appointments,
+        leader,
+        startsAt,
+        input.ignoreAppointmentId,
+      ).length;
+      out.push({ startsAt, taken, full: taken >= MAX_PER_BLOCK });
+    }
+  }
+  return out;
+}
+
+/** Próximos días (con al menos un bloque libre) en que el líder suele entrevistar. */
+export function upcomingInterviewDays(input: {
   leader: Leader;
   from: number;
-  durationMin: number;
   rules: LeaderAvailability[];
   appointments: InterviewAppointment[];
   days?: number;
-  stepMin?: number;
   max?: number;
-}): number[] {
-  const { leader, from, durationMin, rules, appointments } = input;
-  const days = input.days ?? 21;
-  const step = input.stepMin ?? 30;
-  const max = input.max ?? 8;
-  if (!hasAnyAvailability(rules, leader)) return [];
-
-  const slots: number[] = [];
-  const first = new Date(from);
-  for (let d = 0; d < days && slots.length < max; d += 1) {
+}): Date[] {
+  const first = new Date(input.from);
+  const out: Date[] = [];
+  const horizon = input.days ?? 35;
+  const max = input.max ?? 4;
+  for (let d = 0; d < horizon && out.length < max; d += 1) {
     const day = new Date(first.getFullYear(), first.getMonth(), first.getDate() + d);
-    for (const w of freeWindows(rules, leader, day)) {
-      const begin = Math.ceil(w.start / step) * step;
-      for (let m = begin; m + durationMin <= w.end && slots.length < max; m += step) {
-        const startsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, m).getTime();
-        if (startsAt < from) continue;
-        const clash = checkSlot({ leader, startsAt, durationMin, rules, appointments }).some(
-          (i) => i.kind === 'conflicto',
-        );
-        if (!clash) slots.push(startsAt);
-      }
-    }
+    const free = blocksForDay({ ...input, day }).some(
+      (b) => !b.full && b.startsAt + BLOCK_MIN * MS_MIN > input.from,
+    );
+    if (free) out.push(day);
   }
-  return slots;
+  return out;
 }
 
 /* ---------- Mensaje de confirmación ---------- */
@@ -278,21 +461,104 @@ const longDate = new Intl.DateTimeFormat('es-BO', {
 
 /**
  * Borrador de mensaje para WhatsApp. La aplicación NO lo envía: se copia y la persona lo revisa.
- * No incluye el motivo de la entrevista ni ningún dato confidencial.
+ * Solo dice la hora (sin duración) y no incluye el motivo ni ningún dato confidencial.
  */
 export function confirmationMessage(input: {
   personName: string;
+  treatment?: 'hermano' | 'hermana';
   leader: Leader;
   startsAt: number;
-  durationMin: number;
+  modality?: 'presencial' | 'virtual';
+  names?: PresidencyNames;
 }): string {
   const date = longDate.format(new Date(input.startsAt));
-  const time = timeFmt.format(new Date(input.startsAt));
+  const time = formatClock(input.startsAt);
   const first = input.personName.trim().split(/\s+/)[0] ?? input.personName;
+  const treatment = input.treatment === 'hermana' ? 'hermana' : 'hermano';
+  const who = input.names?.[input.leader]?.trim()
+    ? `el ${leaderShort(input.leader, input.names).toLowerCase()}`
+    : LEADER_WITH[input.leader];
+  const virtual = input.modality === 'virtual';
   return [
-    `Hola ${first}, le saludo de parte de la presidencia de la Estaca Blanco Galindo.`,
-    `Su entrevista con ${LEADER_WITH[input.leader]} quedó programada para el ${date} a las ${time} (duración aproximada: ${input.durationMin} minutos).`,
-    'Por favor confirme si podrá asistir. Si necesita cambiar el horario, avíseme con anticipación.',
+    `Hola ${treatment} ${first}, le saludo de parte de la presidencia de la Estaca Blanco Galindo.`,
+    `Su entrevista con ${who} quedó programada para el ${date} a las ${time}${virtual ? ', de forma virtual' : ''}.`,
+    virtual
+      ? 'Le enviaré el enlace antes de la hora. Por favor confirme si podrá asistir.'
+      : 'Por favor confirme si podrá asistir. Si necesita cambiar el horario, avíseme con anticipación.',
+    '¡Gracias!',
+  ].join('\n\n');
+}
+
+export interface FreeBlock {
+  startsAt: number;
+  leader: Leader;
+}
+
+/** Primer bloque con cupo de un líder desde `from` (hasta 5 semanas). */
+export function nextFreeBlock(input: {
+  leader: Leader;
+  from: number;
+  rules: LeaderAvailability[];
+  appointments: InterviewAppointment[];
+}): FreeBlock | undefined {
+  const first = new Date(input.from);
+  for (let d = 0; d < 35; d += 1) {
+    const day = new Date(first.getFullYear(), first.getMonth(), first.getDate() + d);
+    const block = blocksForDay({ ...input, day }).find(
+      (b) => !b.full && b.startsAt + BLOCK_MIN * MS_MIN > input.from,
+    );
+    if (block) return { startsAt: Math.max(block.startsAt, input.from), leader: input.leader };
+  }
+  return undefined;
+}
+
+/* ---------- Teléfono ---------- */
+
+/**
+ * Deja solo dígitos con código de país. Un número de 8 dígitos se toma como de Bolivia (591).
+ * Devuelve `undefined` si está vacío y `null` si no parece un número válido.
+ */
+export function normalizePhone(raw: string | undefined): string | undefined | null {
+  const text = (raw ?? '').trim();
+  if (!text) return undefined;
+  let digits = text.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.length === 8) digits = `591${digits}`;
+  return digits.length >= 10 && digits.length <= 15 ? digits : null;
+}
+
+export function whatsappUrl(phone: string, text: string): string {
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+
+/** Recordatorio para quien todavía no confirmó. */
+export function reminderMessage(input: {
+  personName: string;
+  treatment?: 'hermano' | 'hermana';
+  leader: Leader;
+  startsAt: number;
+  modality?: 'presencial' | 'virtual';
+  names?: PresidencyNames;
+  now: number;
+}): string {
+  const first = input.personName.trim().split(/\s+/)[0] ?? input.personName;
+  const treatment = input.treatment === 'hermana' ? 'hermana' : 'hermano';
+  const target = new Date(input.startsAt);
+  const tomorrow = new Date(input.now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  const when = sameDay(target, new Date(input.now))
+    ? 'hoy'
+    : sameDay(target, tomorrow)
+      ? 'mañana'
+      : `el ${longDate.format(target)}`;
+  const who = input.names?.[input.leader]?.trim()
+    ? `el ${leaderShort(input.leader, input.names).toLowerCase()}`
+    : LEADER_WITH[input.leader];
+  const virtual = input.modality === 'virtual' ? ' (virtual)' : '';
+  return [
+    `Hola ${treatment} ${first}, le escribo para recordarle su entrevista con ${who} ${when} a las ${formatClock(input.startsAt)}${virtual}.`,
+    '¿Me confirma por favor si podrá asistir?',
     '¡Gracias!',
   ].join('\n\n');
 }

@@ -148,8 +148,29 @@ export type InterviewRequestStatus =
   | 'reprogramada';
 
 /** Solo datos administrativos mínimos. Nunca el contenido de la entrevista. */
+/** Motivo (categoría) de la entrevista. Solo la categoría administrativa, nunca el contenido. */
+export type InterviewKind =
+  | 'renovacion_recomendacion'
+  | 'investidura'
+  | 'obrero_templo'
+  | 'llamamiento'
+  | 'personal'
+  | 'pathway'
+  | 'melquisedec'
+  | 'mision'
+  | 'dignidad'
+  | 'otro';
+
 export interface InterviewRequest extends BaseEntity {
   personName: string;
+  /** Cómo se le llama por cariño: «Hermano» o «Hermana». */
+  treatment?: 'hermano' | 'hermana';
+  kind?: InterviewKind;
+  /** Solo para llamamientos: cuál es el llamamiento, si se quiere anotar. */
+  kindDetail?: string;
+  modality?: 'presencial' | 'virtual';
+  /** WhatsApp de la persona, solo dígitos con código de país (opcional). */
+  phone?: string;
   organizationId?: Id;
   requestedBy?: string;
   receivedAt: number;
@@ -166,8 +187,15 @@ export interface InterviewAppointment extends BaseEntity {
   requestId: Id;
   leader: Leader;
   startsAt: number;
+  /** Ya no se muestra: las entrevistas se agendan por bloques y suelen alargarse. */
   durationMin: number;
   status: 'programada' | 'completada' | 'cancelada' | 'reprogramada';
+  /** La persona respondió y confirmó que asistirá. */
+  confirmed?: boolean;
+  /** Cuándo se le mandó el primer mensaje (para saber a quién recordar). */
+  contactedAt?: number;
+  /** Fuera del horario habitual de entrevistas (p. ej. un domingo antes de la sacramental). */
+  special?: boolean;
 }
 
 /* ---------- Adjuntos ---------- */

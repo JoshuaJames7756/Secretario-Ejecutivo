@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Copy, UserRound } from 'lucide-react';
+import { Copy, MessageCircle, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
@@ -12,27 +12,46 @@ import { db } from '@/db/database';
 import { isActive } from '@/db/repo';
 import { RequestForm } from '@/features/interviews/components/request-form';
 import { SchedulePanel } from '@/features/interviews/components/schedule-panel';
+import { summaryTitle } from '@/features/interviews/day-summary';
+import { ConfirmedToggle } from '@/features/interviews/components/confirmed-toggle';
 import {
-  LEADER_LABEL,
+  MODALITY_LABEL,
   REQUEST_STATUS_LABEL,
+  TREATMENT_LABEL,
   confirmationMessage,
+  formatClock,
   isRequestOpen,
+  leaderShort,
+  reasonLabel,
+  whatsappUrl,
 } from '@/features/interviews/model';
 import {
   cancelAppointment,
   cancelRequest,
   completeAppointment,
+  markContacted,
+  setConfirmed,
   updateRequest,
 } from '@/features/interviews/service';
+import { usePresidencyNames } from '@/features/interviews/use-interview-data';
 import { attempt } from '@/lib/actions';
 import { cn, formatDateTime } from '@/lib/utils';
 
-function MessageCard({ text: initial }: { text: string }) {
+function MessageCard({
+  text: initial,
+  phone,
+  appointmentId,
+}: {
+  text: string;
+  phone?: string;
+  appointmentId: string;
+}) {
   const [text, setText] = useState(initial);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
       toast.success('Mensaje copiado. Pégalo en WhatsApp para enviarlo.');
+      void attempt(() => markContacted(appointmentId));
     } catch {
       toast.error('No se pudo copiar. Selecciona el texto y cópialo manualmente.');
     }
@@ -58,6 +77,18 @@ function MessageCard({ text: initial }: { text: string }) {
         <Copy className="size-4" aria-hidden />
         Copiar mensaje
       </Button>
+      {phone && (
+        <Button
+          className="mt-3 ml-2"
+          onClick={() => {
+            window.open(whatsappUrl(phone, text), '_blank', 'noopener');
+            void attempt(() => markContacted(appointmentId));
+          }}
+        >
+          <MessageCircle className="size-4" aria-hidden />
+          Abrir en WhatsApp
+        </Button>
+      )}
     </Card>
   );
 }
@@ -67,6 +98,7 @@ export default function EntrevistaDetallePage() {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+  const names = usePresidencyNames();
 
   const data = useLiveQuery(async () => {
     const request = await db.interviewRequests.get(id);
@@ -112,7 +144,7 @@ export default function EntrevistaDetallePage() {
     <>
       <PageHeader
         eyebrow={organization?.name ?? 'Sin barrio o rama'}
-        title={request.personName}
+        title={`${TREATMENT_LABEL[request.treatment ?? 'hermano']} ${request.personName}`}
         actions={<Badge tone="primary">{REQUEST_STATUS_LABEL[request.status]}</Badge>}
       />
 
@@ -134,26 +166,18 @@ export default function EntrevistaDetallePage() {
             <>
               <dl className="grid gap-3 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="text-muted">Recibida</dt>
-                  <dd>{formatDateTime(request.receivedAt)}</dd>
+                  <dt className="text-muted">Motivo</dt>
+                  <dd>{reasonLabel(request)}</dd>
                 </div>
+                {request.phone && (
+                  <div>
+                    <dt className="text-muted">WhatsApp</dt>
+                    <dd className="tabular-nums">+{request.phone}</dd>
+                  </div>
+                )}
                 <div>
-                  <dt className="text-muted">Solicita</dt>
-                  <dd>{request.requestedBy ?? 'Sin indicar'}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Con quién</dt>
-                  <dd>
-                    {request.mustBeWithPresident
-                      ? 'Presidente de estaca (obligatorio)'
-                      : request.requestedLeader
-                        ? LEADER_LABEL[request.requestedLeader]
-                        : 'Sin preferencia'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted">Preferencias de horario</dt>
-                  <dd>{request.timePreferences ?? 'Sin indicar'}</dd>
+                  <dt className="text-muted">Modalidad</dt>
+                  <dd>{MODALITY_LABEL[request.modality ?? 'presencial']}</dd>
                 </div>
                 {request.notes && (
                   <div className="sm:col-span-2">
@@ -186,12 +210,24 @@ export default function EntrevistaDetallePage() {
             <CardTitle>
               <span id="cita-actual">Cita programada</span>
             </CardTitle>
-            <p className="font-display text-2xl font-semibold">
-              {formatDateTime(current.startsAt)}
-            </p>
-            <p className="text-muted">
-              {LEADER_LABEL[current.leader]} · {current.durationMin} minutos
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-display text-2xl font-semibold">
+                  {formatClock(current.startsAt)}
+                </p>
+                <p className="text-muted">
+                  {summaryTitle(new Date(current.startsAt))} · {leaderShort(current.leader, names)}
+                  {current.special && ' · Día especial'}
+                </p>
+              </div>
+              <ConfirmedToggle
+                personName={request.personName}
+                confirmed={current.confirmed === true}
+                onChange={(next) => {
+                  void attempt(() => setConfirmed(current.id, next));
+                }}
+              />
+            </div>
             {rescheduling ? (
               <div className="mt-4 border-t border-border pt-4">
                 <SchedulePanel
@@ -206,6 +242,12 @@ export default function EntrevistaDetallePage() {
                 <Button variant="outline" size="sm" onClick={() => setRescheduling(true)}>
                   Reprogramar
                 </Button>
+                <Link
+                  to={`/entrevistas/nueva?copiar=${request.id}`}
+                  className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+                >
+                  Agendar otra igual
+                </Link>
                 <Button
                   variant="outline"
                   size="sm"
@@ -235,11 +277,15 @@ export default function EntrevistaDetallePage() {
         {current && !rescheduling && (
           <MessageCard
             key={current.id}
+            phone={request.phone}
+            appointmentId={current.id}
             text={confirmationMessage({
               personName: request.personName,
+              treatment: request.treatment,
               leader: current.leader,
               startsAt: current.startsAt,
-              durationMin: current.durationMin,
+              modality: request.modality,
+              names,
             })}
           />
         )}
@@ -261,7 +307,7 @@ export default function EntrevistaDetallePage() {
             <ul className="space-y-1 text-sm">
               {history.map((a) => (
                 <li key={a.id}>
-                  {formatDateTime(a.startsAt)} · {LEADER_LABEL[a.leader]} ·{' '}
+                  {formatDateTime(a.startsAt)} · {leaderShort(a.leader, names)} ·{' '}
                   <span className="text-muted">{a.status}</span>
                 </li>
               ))}

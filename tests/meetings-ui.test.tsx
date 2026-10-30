@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../src/App';
 import { db } from '../src/db/database';
 import { createEntity } from '../src/db/repo';
+import { scheduleAppointment } from '../src/features/interviews/service';
 import { resetThemeForTests } from '../src/hooks/use-theme';
 
 vi.mock('virtual:pwa-register', () => ({ registerSW: () => async () => {} }));
@@ -154,41 +155,63 @@ describe('flujo de reunión en pantalla', () => {
     }
   });
 
-  it('entrevistas: registra una solicitud, la programa y bloquea una cita simultánea', async () => {
+  it('entrevistas: agenda en una pantalla, confirma y respeta el máximo de 3 por bloque', async () => {
     const user = userEvent.setup();
     window.history.pushState({}, '', '/entrevistas/nueva');
     render(<App />);
     await user.type(await screen.findByLabelText('Nombre de la persona'), 'Ana Pérez');
-    await user.click(screen.getByRole('checkbox', { name: /presidente de estaca/ }));
-    await user.click(screen.getByRole('button', { name: 'Registrar solicitud' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Ana Pérez' })).toBeTruthy();
+    await user.click(screen.getByRole('radio', { name: 'Hermana' }));
+    await user.click(screen.getByRole('radio', { name: 'Virtual' }));
+    await user.click(screen.getByRole('radio', { name: 'Primer consejero' }));
+    fireEvent.change(screen.getByLabelText('Día'), { target: { value: '2030-03-04' } });
+    fireEvent.change(screen.getByLabelText('Hora exacta'), { target: { value: '20:15' } });
+    await user.click(screen.getByRole('button', { name: 'Agendar entrevista' }));
 
-    // Primera cita
-    const when = (await screen.findByLabelText('Fecha y hora')) as HTMLInputElement;
-    await user.clear(when);
-    await user.type(when, '2030-03-04T19:00');
-    await user.click(screen.getByRole('button', { name: 'Programar cita' }));
-    await waitFor(async () => expect(await db.interviewAppointments.count()).toBe(1));
-    expect(await screen.findByRole('button', { name: /Copiar mensaje/ })).toBeTruthy();
-
-    // Segunda solicitud al mismo presidente y a la misma hora: bloqueada
-    const second = await createEntity('interviewRequests', {
-      personName: 'Luis Rojas',
-      receivedAt: Date.now(),
-      mustBeWithPresident: true,
-      requestedLeader: 'presidente',
-      status: 'recibida',
-    });
-    cleanup();
-    window.history.pushState({}, '', `/entrevistas/${second.id}`);
-    render(<App />);
-    const when2 = (await screen.findByLabelText('Fecha y hora')) as HTMLInputElement;
-    await user.clear(when2);
-    await user.type(when2, '2030-03-04T19:15');
-    expect(await screen.findByText(/no se permiten dos citas a la vez/)).toBeTruthy();
     expect(
-      (screen.getByRole('button', { name: 'Programar cita' }) as HTMLButtonElement).disabled,
+      await screen.findByRole('heading', { level: 1, name: 'Hermana Ana Pérez' }),
+    ).toBeTruthy();
+    const saved = await db.interviewAppointments.toArray();
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.leader).toBe('primer_consejero');
+    expect((await db.interviewRequests.toArray())[0]?.modality).toBe('virtual');
+    const message = (await screen.findByLabelText('Texto del mensaje')) as HTMLTextAreaElement;
+    expect(message.value).toContain('hermana Ana');
+    expect(message.value).toContain('8:15 pm');
+    expect(message.value).not.toMatch(/minutos/);
+
+    // Marca de confirmada
+    const toggle = await screen.findByRole('switch', { name: 'Confirmada: Ana Pérez' });
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    await user.click(toggle);
+    await waitFor(async () =>
+      expect((await db.interviewAppointments.toArray())[0]?.confirmed).toBe(true),
+    );
+
+    // Dos más en el mismo bloque con el mismo líder; la cuarta se bloquea
+    for (const name of ['Luis', 'Marta']) {
+      const r = await createEntity('interviewRequests', {
+        personName: name,
+        receivedAt: Date.now(),
+        mustBeWithPresident: false,
+        status: 'recibida',
+      });
+      await scheduleAppointment({
+        requestId: r.id,
+        leader: 'primer_consejero',
+        startsAt: new Date(2030, 2, 4, 20, 25).getTime(),
+      });
+    }
+    cleanup();
+    window.history.pushState({}, '', '/entrevistas/nueva');
+    render(<App />);
+    await user.type(await screen.findByLabelText('Nombre de la persona'), 'Pedro Soto');
+    await user.click(screen.getByRole('radio', { name: 'Primer consejero' }));
+    fireEvent.change(screen.getByLabelText('Día'), { target: { value: '2030-03-04' } });
+    fireEvent.change(screen.getByLabelText('Hora exacta'), { target: { value: '20:10' } });
+    expect(await screen.findByText(/ya tiene 3 entrevistas/)).toBeTruthy();
+    expect(
+      (screen.getByRole('button', { name: 'Agendar entrevista' }) as HTMLButtonElement).disabled,
     ).toBe(true);
-    expect(await db.interviewAppointments.count()).toBe(1);
+    expect(await db.interviewAppointments.count()).toBe(3);
   });
 });
