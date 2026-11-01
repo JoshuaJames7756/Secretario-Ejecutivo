@@ -122,3 +122,19 @@ body {
     background: #fff;
   }
 }
+
+/*
+ * Anti-desborde en el teléfono: una rejilla sin columnas explícitas crece hasta el contenido
+ * más ancho y empuja toda la página (hay que alejar el zoom para ver la barra inferior).
+ * `minmax(0, 1fr)` obliga a la columna a respetar el ancho de la pantalla. Las clases
+ * `grid-cols-*` de Tailwind (capa utilities) siguen mandando donde se usan.
+ */
+@layer base {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html,
+  body {
+    overflow-x: clip;
+  }
+}

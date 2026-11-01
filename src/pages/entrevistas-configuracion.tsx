@@ -69,7 +69,7 @@ function OrgRow({ org }: { org: Organization }) {
           {org.status === 'archivada' && ' · Archivado'}
         </span>
       </span>
-      <span className="flex items-center gap-1">
+      <span className="flex flex-wrap items-center gap-1">
         <label htmlFor={`mv-${org.id}`} className="sr-only">
           Mover {org.name} a
         </label>
